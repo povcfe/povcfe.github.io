@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="robots" content="noodp" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge, chrome=1">
+        <title>linux内核(5.4.81)---KASAN - povcfe&#39;s blog</title><meta name="Description" content="povcfe&#39;s blog"><meta property="og:title" content="linux内核(5.4.81)---KASAN" />
+<meta property="og:description" content="发表于安全客
+KASAN 简述   KASAN是内核用于动态检测内存错误的工具, 简单来说, 数据区域可分为两种:可访问区域，不可访问区域(red_zone).KASAN存在影子内存(shadow memory), 他和正常内存的比例是1:8, 即1byte shadow memory可以代表8bytes 正常内存的可访问性.
+  128TB(内核正常内存) : 16TB(影子内存) &mdash; Documentation/x86/x86_64/mm.rst x86-64 内存布局显示如下:
+   ffffec0000000000 | -20 TB | fffffbffffffffff | 16 TB | KASAN shadow memory   具体规则(&#43;: byte可访问, -: byte不可访问)
+ 如果1byte shadow memory对应的8bytes 内存都可访问, 则*(shadow memory) == 0  [0] -&gt; [&#43;, &#43;, &#43;, &#43;, &#43;, &#43;, &#43;, &#43;]  如果1byte shadow memory对应的8bytes 内存都不可访问, 则*(shadow memory)为负数  [-1] -&gt; [-, -, -, -, -, -, -, -]  如果1byte shadow memory对应的8bytes 内存中有N bytes可访问, 则*(shadow memory) == N  if N = 3 [3] -&gt; [&#43;, &#43;, &#43;, -, -, -, -, -]   实现原理" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://povcfe.github.io/posts/kernel_kasan/" />
+<meta property="og:image" content="https://povcfe.github.io/logo.png"/>
+<meta property="article:published_time" content="2021-03-21T06:14:56-07:00" />
+<meta property="article:modified_time" content="2021-03-21T06:14:56-07:00" />
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="https://povcfe.github.io/logo.png"/>
+
+<meta name="twitter:title" content="linux内核(5.4.81)---KASAN"/>
+<meta name="twitter:description" content="发表于安全客
+KASAN 简述   KASAN是内核用于动态检测内存错误的工具, 简单来说, 数据区域可分为两种:可访问区域，不可访问区域(red_zone).KASAN存在影子内存(shadow memory), 他和正常内存的比例是1:8, 即1byte shadow memory可以代表8bytes 正常内存的可访问性.
+  128TB(内核正常内存) : 16TB(影子内存) &mdash; Documentation/x86/x86_64/mm.rst x86-64 内存布局显示如下:
+   ffffec0000000000 | -20 TB | fffffbffffffffff | 16 TB | KASAN shadow memory   具体规则(&#43;: byte可访问, -: byte不可访问)
+ 如果1byte shadow memory对应的8bytes 内存都可访问, 则*(shadow memory) == 0  [0] -&gt; [&#43;, &#43;, &#43;, &#43;, &#43;, &#43;, &#43;, &#43;]  如果1byte shadow memory对应的8bytes 内存都不可访问, 则*(shadow memory)为负数  [-1] -&gt; [-, -, -, -, -, -, -, -]  如果1byte shadow memory对应的8bytes 内存中有N bytes可访问, 则*(shadow memory) == N  if N = 3 [3] -&gt; [&#43;, &#43;, &#43;, -, -, -, -, -]   实现原理"/>
+<meta name="application-name" content="povcfe&#39;s blog">
+<meta name="apple-mobile-web-app-title" content="povcfe&#39;s blog"><link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"><link rel="manifest" href="/site.webmanifest"><link rel="canonical" href="https://povcfe.github.io/posts/kernel_kasan/" /><link rel="prev" href="https://povcfe.github.io/posts/reprint/" /><link rel="next" href="https://povcfe.github.io/posts/kernel_net/" /><link rel="stylesheet" href="/lib/normalize/normalize.min.css"><link rel="stylesheet" href="/css/style.min.css"><link rel="stylesheet" href="/lib/fontawesome-free/all.min.css"><link rel="stylesheet" href="/lib/animate/animate.min.css"><script type="application/ld+json">
+    {
+        "@context": "http://schema.org",
+        "@type": "BlogPosting",
+        "headline": "linux内核(5.4.81)---KASAN",
+        "inLanguage": "zh-CN",
+        "mainEntityOfPage": {
+            "@type": "WebPage",
+            "@id": "https:\/\/povcfe.github.io\/posts\/kernel_kasan\/"
+        },"genre": "posts","keywords": "linux kernel, 源码分析, 安全机制","wordcount":  1358 ,
+        "url": "https:\/\/povcfe.github.io\/posts\/kernel_kasan\/","datePublished": "2021-03-21T06:14:56-07:00","dateModified": "2021-03-21T06:14:56-07:00","publisher": {
+            "@type": "Organization",
+            "name": "作者"},"author": {
+                "@type": "Person",
+                "name": "作者"
+            },"description": ""
+    }
+    </script></head>
+    <body header-desktop="fixed" header-mobile="auto"><script type="text/javascript">(window.localStorage && localStorage.getItem('theme') ? localStorage.getItem('theme') === 'dark' : ('auto' === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : 'auto' === 'dark')) && document.body.setAttribute('theme', 'dark');</script>
+
+        <div id="mask"></div><div class="wrapper"><header class="desktop" id="header-desktop">
+    <div class="header-wrapper">
+        <div class="header-title">
+            <a href="/" title="povcfe&#39;s blog">povcfe&#39;s blog</a>
+        </div>
+        <div class="menu">
+            <div class="menu-inner"><a class="menu-item" href="/posts/"> 所有文章 </a><a class="menu-item" href="/tags/"> 标签 </a><a class="menu-item" href="/categories/"> 分类 </a><span class="menu-item delimiter"></span><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                    <i class="fas fa-adjust fa-fw"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</header><header class="mobile" id="header-mobile">
+    <div class="header-container">
+        <div class="header-wrapper">
+            <div class="header-title">
+                <a href="/" title="povcfe&#39;s blog">povcfe&#39;s blog</a>
+            </div>
+            <div class="menu-toggle" id="menu-toggle-mobile">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+        <div class="menu" id="menu-mobile"><a class="menu-item" href="/posts/" title="">所有文章</a><a class="menu-item" href="/tags/" title="">标签</a><a class="menu-item" href="/categories/" title="">分类</a><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                <i class="fas fa-adjust fa-fw"></i>
+            </a></div>
+    </div>
+</header>
+<div class="search-dropdown desktop">
+    <div id="search-dropdown-desktop"></div>
+</div>
+<div class="search-dropdown mobile">
+    <div id="search-dropdown-mobile"></div>
+</div>
+<main class="main">
+                <div class="container"><div class="toc" id="toc-auto">
+            <h2 class="toc-title">目录</h2>
+            <div class="toc-content" id="toc-content-auto"></div>
+        </div><article class="page single"><h1 class="single-title animated flipInX">linux内核(5.4.81)---KASAN</h1><div class="post-meta">
+            <div class="post-meta-line"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>作者</a></span>&nbsp;<span class="post-category">收录于 <a href="/categories/linux%E5%86%85%E6%A0%B8%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/"><i class="far fa-folder fa-fw"></i>linux内核源码分析</a></span></div>
+            <div class="post-meta-line"><i class="far fa-calendar-alt fa-fw"></i>&nbsp;<time datetime="2021-03-21">2021-03-21</time>&nbsp;<i class="fas fa-pencil-alt fa-fw"></i>&nbsp;约 1358 字&nbsp;
+                <i class="far fa-clock fa-fw"></i>&nbsp;预计阅读 7 分钟&nbsp;</div>
+        </div><div class="details toc" id="toc-static"  kept="">
+                <div class="details-summary toc-title">
+                    <span>目录</span>
+                    <span><i class="details-icon fas fa-angle-right"></i></span>
+                </div>
+                <div class="details-content toc-content" id="toc-content-static"><nav id="TableOfContents">
+  <ul>
+    <li><a href="#kasan-简述">KASAN 简述</a></li>
+    <li><a href="#源码分析">源码分析</a>
+      <ul>
+        <li><a href="#kasan检测入口">kasan检测入口</a></li>
+        <li><a href="#check_memory_region_inline">check_memory_region_inline</a></li>
+        <li><a href="#memory_is_poisoned">memory_is_poisoned</a></li>
+      </ul>
+    </li>
+    <li><a href="#实例分析">实例分析</a>
+      <ul>
+        <li><a href="#buddy_kasan">buddy_kasan</a></li>
+        <li><a href="#slub_kasan">slub_kasan</a></li>
+        <li><a href="#全局变量_kasan">全局变量_kasan</a></li>
+        <li><a href="#栈变量_kasan">栈变量_kasan</a></li>
+      </ul>
+    </li>
+  </ul>
+</nav></div>
+            </div><div class="content" id="content"><p><a href="https://www.anquanke.com/setting?p=message" target="_blank" rel="noopener noreffer">发表于安全客</a></p>
+<h2 id="kasan-简述">KASAN 简述</h2>
+<ul>
+<li>
+<p>KASAN是内核用于动态检测内存错误的工具, 简单来说, 数据区域可分为两种:可访问区域，不可访问区域(red_zone).KASAN存在影子内存(shadow memory), 他和正常内存的比例是1:8, 即1byte shadow memory可以代表8bytes 正常内存的可访问性.</p>
+</li>
+<li>
+<p>128TB(内核正常内存) : 16TB(影子内存) &mdash; Documentation/x86/x86_64/mm.rst x86-64 内存布局显示如下:</p>
+</li>
+</ul>
+<pre><code> ffffec0000000000 |  -20    TB | fffffbffffffffff |   16 TB | KASAN shadow memory
+</code></pre><ul>
+<li>
+<p>具体规则(+: byte可访问, -: byte不可访问)</p>
+<ul>
+<li>如果1byte shadow memory对应的8bytes 内存都可访问, 则*(shadow memory) == 0</li>
+</ul>
+<div class="highlight"><pre class="chroma"><code class="language-c" data-lang="c"><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-&gt;</span> <span class="p">[</span><span class="o">+</span><span class="p">,</span> <span class="o">+</span><span class="p">,</span> <span class="o">+</span><span class="p">,</span> <span class="o">+</span><span class="p">,</span> <span class="o">+</span><span class="p">,</span> <span class="o">+</span><span class="p">,</span> <span class="o">+</span><span class="p">,</span> <span class="o">+</span><span class="p">]</span>
+</code></pre></div><ul>
+<li>如果1byte shadow memory对应的8bytes 内存都不可访问, 则*(shadow memory)为负数</li>
+</ul>
+<div class="highlight"><pre class="chroma"><code class="language-c" data-lang="c"><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">-&gt;</span> <span class="p">[</span><span class="o">-</span><span class="p">,</span> <span class="o">-</span><span class="p">,</span> <span class="o">-</span><span class="p">,</span> <span class="o">-</span><span class="p">,</span> <span class="o">-</span><span class="p">,</span> <span class="o">-</span><span class="p">,</span> <span class="o">-</span><span class="p">,</span> <span class="o">-</span><span class="p">]</span>
+</code></pre></div><ul>
+<li>如果1byte shadow memory对应的8bytes 内存中有N bytes可访问, 则*(shadow memory) == N</li>
+</ul>
+<div class="highlight"><pre class="chroma"><code class="language-c" data-lang="c"><span class="k">if</span> <span class="n">N</span> <span class="o">=</span> <span class="mi">3</span>
+<span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="o">-&gt;</span> <span class="p">[</span><span class="o">+</span><span class="p">,</span> <span class="o">+</span><span class="p">,</span> <span class="o">+</span><span class="p">,</span> <span class="o">-</span><span class="p">,</span> <span class="o">-</span><span class="p">,</span> <span class="o">-</span><span class="p">,</span> <span class="o">-</span><span class="p">,</span> <span class="o">-</span><span class="p">]</span>
+</code></pre></div></li>
+<li>
+<p>实现原理</p>
+<ul>
+<li>
+<p>代码插桩: 利用编译器特性进行代码插桩, 当程序对内存进行读取或写入(load/store)时插入kasan检测代码</p>
+</li>
+<li>
+<p>kasan检测代码: __asan_loadN(addr)/__asan_storeN(addr) (后面会对源码做详细分析), 主要功能是检测addr所在位置的N bytes内存是否可用.</p>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="源码分析">源码分析</h2>
+<h3 id="kasan检测入口">kasan检测入口</h3>
+<ul>
+<li>使用宏定义实现__asan_load/__asan_store, 关键函数为check_memory_region_inline</li>
+</ul>
+<div class="highlight"><pre class="chroma"><code class="language-c" data-lang="c"><span class="cp">#define DEFINE_ASAN_LOAD_STORE(size)					\
+</span><span class="cp">	void __asan_load##size(unsigned long addr)			\
+</span><span class="cp">	{								\
+</span><span class="cp">		check_memory_region_inline(addr, size, false, _RET_IP_);\
+</span><span class="cp">	}								\
+</span><span class="cp">	EXPORT_SYMBOL(__asan_load##size);				\
+</span><span class="cp">	__alias(__asan_load##size)					\
+</span><span class="cp">	void __asan_load##size##_noabort(unsigned long);		\
+</span><span class="cp">	EXPORT_SYMBOL(__asan_load##size##_noabort);			\
+</span><span class="cp">	void __asan_store##size(unsigned long addr)			\
+</span><span class="cp">	{								\
+</span><span class="cp">		check_memory_region_inline(addr, size, true, _RET_IP_);	\
+</span><span class="cp">	}								\
+</span><span class="cp">	EXPORT_SYMBOL(__asan_store##size);				\
+</span><span class="cp">	__alias(__asan_store##size)					\
+</span><span class="cp">	void __asan_store##size##_noabort(unsigned long);		\
+</span><span class="cp">	EXPORT_SYMBOL(__asan_store##size##_noabort)
+</span></code></pre></div><h3 id="check_memory_region_inline">check_memory_region_inline</h3>
+<ul>
+<li>
+<p>当size==0时, 对内存不做读写操作, 正常返回</p>
+</li>
+<li>
+<p>addr必须大于KASAN_SHADOW_START对应的正常地址, 即addr必须在shadow映射的界限内</p>
+</li>
+<li>
+<p>memory_is_poisoned作为核心函数判断内存是否可用</p>
+</li>
+</ul>
+<div class="highlight"><pre class="chroma"><code class="language-c" data-lang="c"><span class="k">static</span> <span class="n">__always_inline</span> <span class="kt">bool</span> <span class="nf">check_memory_region_inline</span><span class="p">(</span><span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">addr</span><span class="p">,</span>
+						<span class="n">size_t</span> <span class="n">size</span><span class="p">,</span> <span class="kt">bool</span> <span class="n">write</span><span class="p">,</span>
+						<span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">ret_ip</span><span class="p">)</span>
+<span class="p">{</span>
+	<span class="k">if</span> <span class="p">(</span><span class="n">unlikely</span><span class="p">(</span><span class="n">size</span> <span class="o">==</span> <span class="mi">0</span><span class="p">))</span>
+		<span class="k">return</span> <span class="nb">true</span><span class="p">;</span>
+
+	<span class="k">if</span> <span class="p">(</span><span class="n">unlikely</span><span class="p">((</span><span class="kt">void</span> <span class="o">*</span><span class="p">)</span><span class="n">addr</span> <span class="o">&lt;</span>
+		<span class="n">kasan_shadow_to_mem</span><span class="p">((</span><span class="kt">void</span> <span class="o">*</span><span class="p">)</span><span class="n">KASAN_SHADOW_START</span><span class="p">)))</span> <span class="p">{</span>
+		<span class="n">kasan_report</span><span class="p">(</span><span class="n">addr</span><span class="p">,</span> <span class="n">size</span><span class="p">,</span> <span class="n">write</span><span class="p">,</span> <span class="n">ret_ip</span><span class="p">);</span>
+		<span class="k">return</span> <span class="nb">false</span><span class="p">;</span>
+	<span class="p">}</span>
+
+	<span class="k">if</span> <span class="p">(</span><span class="n">likely</span><span class="p">(</span><span class="o">!</span><span class="n">memory_is_poisoned</span><span class="p">(</span><span class="n">addr</span><span class="p">,</span> <span class="n">size</span><span class="p">)))</span>
+		<span class="k">return</span> <span class="nb">true</span><span class="p">;</span>
+
+	<span class="n">kasan_report</span><span class="p">(</span><span class="n">addr</span><span class="p">,</span> <span class="n">size</span><span class="p">,</span> <span class="n">write</span><span class="p">,</span> <span class="n">ret_ip</span><span class="p">);</span>
+	<span class="k">return</span> <span class="nb">false</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div><h3 id="memory_is_poisoned">memory_is_poisoned</h3>
+<ul>
+<li>
+<p>size 如果为常量, 则对1, 2-4-8, 16这三种情况分开讨论</p>
+</li>
+<li>
+<p>size 不为常量进入memory_is_poisoned_n</p>
+</li>
+</ul>
+<div class="highlight"><pre class="chroma"><code class="language-c" data-lang="c"><span class="k">static</span> <span class="n">__always_inline</span> <span class="kt">bool</span> <span class="nf">memory_is_poisoned</span><span class="p">(</span><span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">addr</span><span class="p">,</span> <span class="n">size_t</span> <span class="n">size</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="c1">// 判断size是否为常量
+</span><span class="c1"></span>	<span class="k">if</span> <span class="p">(</span><span class="n">__builtin_constant_p</span><span class="p">(</span><span class="n">size</span><span class="p">))</span> <span class="p">{</span>
+		<span class="k">switch</span> <span class="p">(</span><span class="n">size</span><span class="p">)</span> <span class="p">{</span>
+		<span class="k">case</span> <span class="mi">1</span><span class="o">:</span>
+			<span class="k">return</span> <span class="n">memory_is_poisoned_1</span><span class="p">(</span><span class="n">addr</span><span class="p">);</span>
+		<span class="k">case</span> <span class="mi">2</span><span class="o">:</span>
+		<span class="k">case</span> <span class="mi">4</span><span class="o">:</span>
+		<span class="k">case</span> <span class="mi">8</span><span class="o">:</span>
+			<span class="k">return</span> <span class="n">memory_is_poisoned_2_4_8</span><span class="p">(</span><span class="n">addr</span><span class="p">,</span> <span class="n">size</span><span class="p">);</span>
+		<span class="k">case</span> <span class="mi">16</span><span class="o">:</span>
+			<span class="k">return</span> <span class="n">memory_is_poisoned_16</span><span class="p">(</span><span class="n">addr</span><span class="p">);</span>
+		<span class="k">default</span><span class="o">:</span>
+			<span class="n">BUILD_BUG</span><span class="p">();</span>
+		<span class="p">}</span>
+	<span class="p">}</span>
+
+	<span class="k">return</span> <span class="n">memory_is_poisoned_n</span><span class="p">(</span><span class="n">addr</span><span class="p">,</span> <span class="n">size</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div><h4 id="memory_is_poisoned_1">memory_is_poisoned_1</h4>
+<ul>
+<li>
+<p>通过kasan_mem_to_shadow获得addr对应的shadow_addr, *((s8 *)shadow_addr)获得shadow_addr所对应的8bits内存值shadow_value</p>
+</li>
+<li>
+<p>因为1byte shadow对应8bytes, 所以可以将 8bytes对齐的addr -&gt; 8bytes对齐的addr+8 设为一个内存组, 对应1byte shadow, 此处addr&amp;7获得addr在该组中的偏移量last_accessible_byte</p>
+</li>
+<li>
+<p>比较偏移量与shadow_value(该组内可访问内存的byte 数), 如果last_accessible_byte &lt;= shadow_value 显然addr可访问(当shadow_value==0时, 表示8bytes皆可访问)</p>
+</li>
+</ul>
+<div class="highlight"><pre class="chroma"><code class="language-c" data-lang="c"><span class="k">static</span> <span class="n">__always_inline</span> <span class="kt">bool</span> <span class="nf">memory_is_poisoned_1</span><span class="p">(</span><span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">addr</span><span class="p">)</span>
+<span class="p">{</span>
+	<span class="n">s8</span> <span class="n">shadow_value</span> <span class="o">=</span> <span class="o">*</span><span class="p">(</span><span class="n">s8</span> <span class="o">*</span><span class="p">)</span><span class="n">kasan_mem_to_shadow</span><span class="p">((</span><span class="kt">void</span> <span class="o">*</span><span class="p">)</span><span class="n">addr</span><span class="p">);</span>
+
+	<span class="k">if</span> <span class="p">(</span><span class="n">unlikely</span><span class="p">(</span><span class="n">shadow_value</span><span class="p">))</span> <span class="p">{</span>
+		<span class="n">s8</span> <span class="n">last_accessible_byte</span> <span class="o">=</span> <span class="n">addr</span> <span class="o">&amp;</span> <span class="n">KASAN_SHADOW_MASK</span><span class="p">;</span>
+		<span class="k">return</span> <span class="n">unlikely</span><span class="p">(</span><span class="n">last_accessible_byte</span> <span class="o">&gt;=</span> <span class="n">shadow_value</span><span class="p">);</span>
+	<span class="p">}</span>
+
+	<span class="k">return</span> <span class="nb">false</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div><h4 id="memory_is_poisoned_2_4_8">memory_is_poisoned_2_4_8</h4>
+<ul>
+<li>
+<p>与memory_is_poisoned_1的区别在于此处多考虑了一种情况(待store/read内存跨越两个内存组)</p>
+</li>
+<li>
+<p>对于跨越内存组的情况, 需要满足第一个内存组8bytes皆可访问(0), 第二个内存组shadow_value &gt;= 组内偏移</p>
+</li>
+<li>
+<p>如果不跨越内存, 只判断末尾地址是否可store/load 1byte 内存</p>
+</li>
+</ul>
+<div class="highlight"><pre class="chroma"><code class="language-c" data-lang="c"><span class="k">static</span> <span class="n">__always_inline</span> <span class="kt">bool</span> <span class="nf">memory_is_poisoned_2_4_8</span><span class="p">(</span><span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">addr</span><span class="p">,</span>
+						<span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">size</span><span class="p">)</span>
+<span class="p">{</span>
+	<span class="n">u8</span> <span class="o">*</span><span class="n">shadow_addr</span> <span class="o">=</span> <span class="p">(</span><span class="n">u8</span> <span class="o">*</span><span class="p">)</span><span class="n">kasan_mem_to_shadow</span><span class="p">((</span><span class="kt">void</span> <span class="o">*</span><span class="p">)</span><span class="n">addr</span><span class="p">);</span>
+
+	<span class="cm">/*
+</span><span class="cm">	 * Access crosses 8(shadow size)-byte boundary. Such access maps
+</span><span class="cm">	 * into 2 shadow bytes, so we need to check them both.
+</span><span class="cm">	 */</span>
+	<span class="k">if</span> <span class="p">(</span><span class="n">unlikely</span><span class="p">(((</span><span class="n">addr</span> <span class="o">+</span> <span class="n">size</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">&amp;</span> <span class="n">KASAN_SHADOW_MASK</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">size</span> <span class="o">-</span> <span class="mi">1</span><span class="p">))</span>
+		<span class="k">return</span> <span class="o">*</span><span class="n">shadow_addr</span> <span class="o">||</span> <span class="n">memory_is_poisoned_1</span><span class="p">(</span><span class="n">addr</span> <span class="o">+</span> <span class="n">size</span> <span class="o">-</span> <span class="mi">1</span><span class="p">);</span>
+
+	<span class="k">return</span> <span class="n">memory_is_poisoned_1</span><span class="p">(</span><span class="n">addr</span> <span class="o">+</span> <span class="n">size</span> <span class="o">-</span> <span class="mi">1</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div><h4 id="memory_is_poisoned_16">memory_is_poisoned_16</h4>
+<ul>
+<li>
+<p>只有addr本身为8bytes 对齐时才会只跨越两个内存组, 否则跨越三个内存组</p>
+</li>
+<li>
+<p>对于跨越三个内存组的情况, 需要满足前两个内存组内存皆可访问(16bit shadow_value == 0), 同时第三个内存组shadow_value &gt;= 组内偏移</p>
+</li>
+<li>
+<p>如果只跨越两个内存组, 只需要16bit shadow_value == 0即可</p>
+</li>
+</ul>
+<div class="highlight"><pre class="chroma"><code class="language-c" data-lang="c"><span class="k">static</span> <span class="n">__always_inline</span> <span class="kt">bool</span> <span class="nf">memory_is_poisoned_16</span><span class="p">(</span><span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">addr</span><span class="p">)</span>
+<span class="p">{</span>
+	<span class="n">u16</span> <span class="o">*</span><span class="n">shadow_addr</span> <span class="o">=</span> <span class="p">(</span><span class="n">u16</span> <span class="o">*</span><span class="p">)</span><span class="n">kasan_mem_to_shadow</span><span class="p">((</span><span class="kt">void</span> <span class="o">*</span><span class="p">)</span><span class="n">addr</span><span class="p">);</span>
+
+	<span class="cm">/* Unaligned 16-bytes access maps into 3 shadow bytes. */</span>
+	<span class="k">if</span> <span class="p">(</span><span class="n">unlikely</span><span class="p">(</span><span class="o">!</span><span class="n">IS_ALIGNED</span><span class="p">(</span><span class="n">addr</span><span class="p">,</span> <span class="n">KASAN_SHADOW_SCALE_SIZE</span><span class="p">)))</span>
+		<span class="k">return</span> <span class="o">*</span><span class="n">shadow_addr</span> <span class="o">||</span> <span class="n">memory_is_poisoned_1</span><span class="p">(</span><span class="n">addr</span> <span class="o">+</span> <span class="mi">15</span><span class="p">);</span>
+
+	<span class="k">return</span> <span class="o">*</span><span class="n">shadow_addr</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div><h4 id="memory_is_poisoned_n">memory_is_poisoned_n</h4>
+<ul>
+<li>
+<p>memory_is_nonzero:</p>
+<ul>
+<li>首先定位与待访问内存块对应的shadow_mem_block, 检测shadow_mem_block中的shadow_value是否全为0, 如果全为0, 则内存块可访问, 从memory_is_poisoned_n返回</li>
+<li>如果shadow_value不全为0, 则找到第一个不为0的shadow_value对应的shadow_addr, return shadow_addr</li>
+</ul>
+</li>
+<li>
+<p>得到memory_is_nonzero中返回的shadow_addr, 如果shadow_addr == last_shadow(末尾地址对应的shadow_addr) 则内存块可访问, 从memory_is_poisoned_n返回</p>
+</li>
+<li>
+<p>否则判断末尾地址是否可store/load 1byte(比较末尾地址偏移与last_shadow的大小)</p>
+</li>
+</ul>
+<div class="highlight"><pre class="chroma"><code class="language-c" data-lang="c"><span class="k">static</span> <span class="n">__always_inline</span> <span class="kt">bool</span> <span class="nf">memory_is_poisoned_n</span><span class="p">(</span><span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">addr</span><span class="p">,</span>
+						<span class="n">size_t</span> <span class="n">size</span><span class="p">)</span>
+<span class="p">{</span>
+	<span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">ret</span><span class="p">;</span>
+
+	<span class="n">ret</span> <span class="o">=</span> <span class="n">memory_is_nonzero</span><span class="p">(</span><span class="n">kasan_mem_to_shadow</span><span class="p">((</span><span class="kt">void</span> <span class="o">*</span><span class="p">)</span><span class="n">addr</span><span class="p">),</span>
+			<span class="n">kasan_mem_to_shadow</span><span class="p">((</span><span class="kt">void</span> <span class="o">*</span><span class="p">)</span><span class="n">addr</span> <span class="o">+</span> <span class="n">size</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">);</span>
+
+	<span class="k">if</span> <span class="p">(</span><span class="n">unlikely</span><span class="p">(</span><span class="n">ret</span><span class="p">))</span> <span class="p">{</span>
+		<span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">last_byte</span> <span class="o">=</span> <span class="n">addr</span> <span class="o">+</span> <span class="n">size</span> <span class="o">-</span> <span class="mi">1</span><span class="p">;</span>
+		<span class="n">s8</span> <span class="o">*</span><span class="n">last_shadow</span> <span class="o">=</span> <span class="p">(</span><span class="n">s8</span> <span class="o">*</span><span class="p">)</span><span class="n">kasan_mem_to_shadow</span><span class="p">((</span><span class="kt">void</span> <span class="o">*</span><span class="p">)</span><span class="n">last_byte</span><span class="p">);</span>
+
+		<span class="k">if</span> <span class="p">(</span><span class="n">unlikely</span><span class="p">(</span><span class="n">ret</span> <span class="o">!=</span> <span class="p">(</span><span class="kt">unsigned</span> <span class="kt">long</span><span class="p">)</span><span class="n">last_shadow</span> <span class="o">||</span>
+			<span class="p">((</span><span class="kt">long</span><span class="p">)(</span><span class="n">last_byte</span> <span class="o">&amp;</span> <span class="n">KASAN_SHADOW_MASK</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="o">*</span><span class="n">last_shadow</span><span class="p">)))</span>
+			<span class="k">return</span> <span class="nb">true</span><span class="p">;</span>
+	<span class="p">}</span>
+	<span class="k">return</span> <span class="nb">false</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div><h2 id="实例分析">实例分析</h2>
+<h3 id="buddy_kasan">buddy_kasan</h3>
+<blockquote>
+<p>kasan_alloc_pages: 标记shadow_mem为0, kasan_free_pages: 标记shadow_mem为不可访问</p>
+</blockquote>
+<h4 id="验证代码">验证代码</h4>
+<ul>
+<li>编写kasan驱动, 使用alloc_pages调用buddy分配内存, 查看分配后以及释放后的shadow_mem内存(local_addr[0] = &lsquo;\x10&rsquo;; 对buddy分配的内存块做store操作, 会触发__asan_store1代码插桩)</li>
+</ul>
+<div class="highlight"><pre class="chroma"><code class="language-c" data-lang="c"><span class="kt">long</span> <span class="nf">kasan_ioctl</span><span class="p">(</span><span class="k">struct</span> <span class="n">file</span><span class="o">*</span> <span class="n">filp</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">cmd</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">arg</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">char</span> <span class="o">*</span><span class="n">local_addr</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+    <span class="k">struct</span> <span class="n">page</span> <span class="o">*</span><span class="n">local_pg</span> <span class="o">=</span> <span class="n">alloc_pages</span><span class="p">(</span><span class="n">GFP_KERNEL</span><span class="p">,</span> <span class="mi">2</span><span class="p">);</span>
+    <span class="n">local_addr</span> <span class="o">=</span> <span class="n">page_address</span><span class="p">(</span><span class="n">local_pg</span><span class="p">);</span>
+    <span class="n">local_addr</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="sc">&#39;\x10&#39;</span><span class="p">;</span>
+    <span class="n">__free_pages</span><span class="p">(</span><span class="n">local_pg</span><span class="p">,</span> <span class="mi">2</span><span class="p">);</span>
+    
+    <span class="n">printk</span><span class="p">(</span><span class="n">KERN_DEBUG</span> <span class="s">&#34;[+] modules kasan debug</span><span class="se">\n</span><span class="s">&#34;</span><span class="p">);</span>
+
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div><ul>
+<li>ida反汇编代码(存在_asan_store1_noabort(v5), 猜测成立)</li>
+</ul>
+<div class="highlight"><pre class="chroma"><code class="language-c" data-lang="c"><span class="kr">__int64</span> <span class="kr">__fastcall</span> <span class="nf">kasan_ioctl</span><span class="p">(</span><span class="n">file</span> <span class="o">*</span><span class="n">filp</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">cmd</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="kr">__int64</span> <span class="n">arg</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="kr">__int64</span> <span class="n">v3</span><span class="p">;</span> <span class="c1">// r13
+</span><span class="c1"></span>  <span class="kr">__int64</span> <span class="n">v4</span><span class="p">;</span> <span class="c1">// r12
+</span><span class="c1"></span>  <span class="n">_BYTE</span> <span class="o">*</span><span class="n">v5</span><span class="p">;</span> <span class="c1">// r12
+</span><span class="c1"></span>
+  <span class="n">_fentry__</span><span class="p">(</span><span class="n">filp</span><span class="p">,</span> <span class="n">cmd</span><span class="p">,</span> <span class="n">arg</span><span class="p">);</span>
+  <span class="n">v3</span> <span class="o">=</span> <span class="n">alloc_pages_current</span><span class="p">(</span><span class="mi">3264LL</span><span class="p">,</span> <span class="mi">2LL</span><span class="p">);</span>
+  <span class="n">_asan_load8_noabort</span><span class="p">(</span><span class="o">&amp;</span><span class="n">vmemmap_base</span><span class="p">);</span>
+  <span class="n">v4</span> <span class="o">=</span> <span class="n">v3</span> <span class="o">-</span> <span class="n">vmemmap_base</span><span class="p">;</span>
+  <span class="n">_asan_load8_noabort</span><span class="p">(</span><span class="o">&amp;</span><span class="n">page_offset_base</span><span class="p">);</span>
+  <span class="n">v5</span> <span class="o">=</span> <span class="p">(</span><span class="n">_BYTE</span> <span class="o">*</span><span class="p">)(</span><span class="n">page_offset_base</span> <span class="o">+</span> <span class="p">(</span><span class="n">v4</span> <span class="o">&gt;&gt;</span> <span class="mi">6</span> <span class="o">&lt;&lt;</span> <span class="mi">12</span><span class="p">));</span>
+  <span class="n">_asan_store1_noabort</span><span class="p">(</span><span class="n">v5</span><span class="p">);</span>
+  <span class="o">*</span><span class="n">v5</span> <span class="o">=</span> <span class="mh">0x10</span><span class="p">;</span>
+  <span class="n">printk</span><span class="p">(</span><span class="o">&amp;</span><span class="n">unk_1C0</span><span class="p">,</span> <span class="n">v5</span><span class="p">);</span>
+  <span class="n">_free_pages</span><span class="p">(</span><span class="n">v3</span><span class="p">,</span> <span class="mi">2LL</span><span class="p">);</span>
+  <span class="n">printk</span><span class="p">(</span><span class="o">&amp;</span><span class="n">unk_200</span><span class="p">,</span> <span class="mi">2LL</span><span class="p">);</span>
+  <span class="k">return</span> <span class="mi">0LL</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div><h4 id="buddy_kasan-动态调试">buddy_kasan 动态调试</h4>
+<ul>
+<li>
+<p>在call __asan_store1处下断点, 查看rdi内容</p>
+<div class="highlight"><pre class="chroma"><code class="language-c" data-lang="c"><span class="n">gef</span><span class="err">➤</span>  <span class="n">p</span> <span class="err">$</span><span class="n">rdi</span>
+<span class="err">$</span><span class="mi">1</span> <span class="o">=</span> <span class="mh">0xffff88805b034000</span>
+</code></pre></div><pre><code>
+</code></pre></li>
+<li>
+<p>计算shadow_mem = addr &raquo; 3 + 0xdffffc0000000000, 所以0xffff88805b034000对应的shadow_mem: 0xffffed100b606800</p>
+<div class="highlight"><pre class="chroma"><code class="language-c" data-lang="c"><span class="k">static</span> <span class="kr">inline</span> <span class="kt">void</span> <span class="o">*</span><span class="nf">kasan_mem_to_shadow</span><span class="p">(</span><span class="k">const</span> <span class="kt">void</span> <span class="o">*</span><span class="n">addr</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">return</span> <span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="p">)((</span><span class="kt">unsigned</span> <span class="kt">long</span><span class="p">)</span><span class="n">addr</span> <span class="o">&gt;&gt;</span> <span class="n">KASAN_SHADOW_SCALE_SHIFT</span><span class="p">)</span>
+        <span class="o">+</span> <span class="n">KASAN_SHADOW_OFFSET</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div><pre><code></code></pre></li>
+<li>
+<p>查看shadow_mem内容(shadow_value=0x0, 表示内存块可访问)</p>
+<div class="highlight"><pre class="chroma"><code class="language-c" data-lang="c"><span class="n">gef</span><span class="err">➤</span>  <span class="n">x</span><span class="o">/</span><span class="mi">16</span><span class="n">xg</span> <span class="mh">0xffffed100b606800</span>
+<span class="mh">0xffffed100b606800</span><span class="o">:</span>     <span class="mh">0x0000000000000000</span>      <span class="mh">0x0000000000000000</span>
+<span class="mh">0xffffed100b606810</span><span class="o">:</span>     <span class="mh">0x0000000000000000</span>      <span class="mh">0x0000000000000000</span>
+<span class="mh">0xffffed100b606820</span><span class="o">:</span>     <span class="mh">0x0000000000000000</span>      <span class="mh">0x0000000000000000</span>
+<span class="mh">0xffffed100b606830</span><span class="o">:</span>     <span class="mh">0x0000000000000000</span>      <span class="mh">0x0000000000000000</span>
+<span class="mh">0xffffed100b606840</span><span class="o">:</span>     <span class="mh">0x0000000000000000</span>      <span class="mh">0x0000000000000000</span>
+<span class="mh">0xffffed100b606850</span><span class="o">:</span>     <span class="mh">0x0000000000000000</span>      <span class="mh">0x0000000000000000</span>
+<span class="mh">0xffffed100b606860</span><span class="o">:</span>     <span class="mh">0x0000000000000000</span>      <span class="mh">0x0000000000000000</span>
+<span class="mh">0xffffed100b606870</span><span class="o">:</span>     <span class="mh">0x0000000000000000</span>      <span class="mh">0x0000000000000000</span>
+</code></pre></div><pre><code>
+</code></pre></li>
+<li>
+<p>程序执行__free_pages, 释放buddy内存块, 再次查看shadow_mem(0xff=-1, 内存块不可访问)</p>
+<div class="highlight"><pre class="chroma"><code class="language-c" data-lang="c"><span class="n">gef</span><span class="err">➤</span>  <span class="n">x</span><span class="o">/</span><span class="mi">16</span><span class="n">xg</span> <span class="mh">0xffffed100b606800</span>
+<span class="mh">0xffffed100b606800</span><span class="o">:</span>     <span class="mh">0xffffffffffffffff</span>      <span class="mh">0xffffffffffffffff</span>
+<span class="mh">0xffffed100b606810</span><span class="o">:</span>     <span class="mh">0xffffffffffffffff</span>      <span class="mh">0xffffffffffffffff</span>
+<span class="mh">0xffffed100b606820</span><span class="o">:</span>     <span class="mh">0xffffffffffffffff</span>      <span class="mh">0xffffffffffffffff</span>
+<span class="mh">0xffffed100b606830</span><span class="o">:</span>     <span class="mh">0xffffffffffffffff</span>      <span class="mh">0xffffffffffffffff</span>
+<span class="mh">0xffffed100b606840</span><span class="o">:</span>     <span class="mh">0xffffffffffffffff</span>      <span class="mh">0xffffffffffffffff</span>
+<span class="mh">0xffffed100b606850</span><span class="o">:</span>     <span class="mh">0xffffffffffffffff</span>      <span class="mh">0xffffffffffffffff</span>
+<span class="mh">0xffffed100b606860</span><span class="o">:</span>     <span class="mh">0xffffffffffffffff</span>      <span class="mh">0xffffffffffffffff</span>
+<span class="mh">0xffffed100b606870</span><span class="o">:</span>     <span class="mh">0xffffffffffffffff</span>      <span class="mh">0xffffffffffffffff</span>
+</code></pre></div><pre><code>
+</code></pre></li>
+<li>
+<p>计算shadow_mem边界(mem:shadow_mem=8:1), alloc_pages申请4页(0x1000 * 4)对应shadow_mem(0x1000 * 4/8=0x800), 发现0xff与0xfc的分界, 猜测成立</p>
+<div class="highlight"><pre class="chroma"><code class="language-c" data-lang="c"><span class="n">gef</span><span class="err">➤</span>  <span class="n">x</span><span class="o">/</span><span class="mi">16</span><span class="n">xg</span> <span class="mh">0xffffed100b606800</span><span class="o">+</span><span class="mh">0x800</span><span class="o">-</span><span class="mh">0x10</span>
+<span class="mh">0xffffed100b606ff0</span><span class="o">:</span>     <span class="mh">0xffffffffffffffff</span>      <span class="mh">0xffffffffffffffff</span>
+<span class="mh">0xffffed100b607000</span><span class="o">:</span>     <span class="mh">0xfcfcfcfcfcfcfcfc</span>      <span class="mh">0xfcfcfcfcfcfcfcfc</span>
+<span class="mh">0xffffed100b607010</span><span class="o">:</span>     <span class="mh">0xfcfcfcfcfcfcfcfc</span>      <span class="mh">0xfcfcfcfcfcfcfcfc</span>
+<span class="mh">0xffffed100b607020</span><span class="o">:</span>     <span class="mh">0xfcfcfcfcfcfcfcfc</span>      <span class="mh">0xfcfcfcfcfcfcfcfc</span>
+<span class="mh">0xffffed100b607030</span><span class="o">:</span>     <span class="mh">0xfcfcfcfcfcfcfcfc</span>      <span class="mh">0xfcfcfcfcfcfcfcfc</span>
+<span class="mh">0xffffed100b607040</span><span class="o">:</span>     <span class="mh">0xfcfcfcfcfcfcfcfc</span>      <span class="mh">0xfcfcfcfcfcfcfcfc</span>
+<span class="mh">0xffffed100b607050</span><span class="o">:</span>     <span class="mh">0xfcfcfcfcfcfcfcfc</span>      <span class="mh">0xfcfcfcfcfcfcfcfc</span>
+<span class="mh">0xffffed100b607060</span><span class="o">:</span>     <span class="mh">0xfcfcfcfcfcfcfcfc</span>      <span class="mh">0xfcfcfcfcfcfcfcfc</span>
+</code></pre></div><pre><code>
+</code></pre></li>
+<li>
+<p>由上述调试结果可知, buddy_kasan可有效的检测内存越界以及uaf</p>
+</li>
+</ul>
+<h3 id="slub_kasan">slub_kasan</h3>
+<blockquote>
+<p>提到slub_kasan不得不提及slub_debug, slub_debug是slub早期的内存检测机制, 想详细的了解可以看一下这篇文章 <a href="http://www.wowotech.net/memory_management/427.html" target="_blank" rel="noopener noreffer">slub_debug原理</a>, 或者我之前写的一篇文章<a href="https://www.povcfe.site/posts/kernel_mm/" target="_blank" rel="noopener noreffer">点击此处</a></p>
+</blockquote>
+<p>在这里我简单的描述一下slub_debug的原理:</p>
+<ul>
+<li>
+<p>首先slub算法将page切割成一个一个的slub_obj, obj的布局大概是当obj空闲时, 复用头部空间用于存储free_list(指向下一个空闲obj)</p>
+</li>
+<li>
+<p>当slub_debug开启后, slub_obj的布局将发生非常大的改变如下, 第一行为初始布局, 第二行为开启slub_debug后的布局</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="../../kernel_kasan/kernel_kasan_slub_debug.png"
+        data-srcset="../../kernel_kasan/kernel_kasan_slub_debug.png, ../../kernel_kasan/kernel_kasan_slub_debug.png 1.5x, ../../kernel_kasan/kernel_kasan_slub_debug.png 2x"
+        data-sizes="auto"
+        alt="../../kernel_kasan/kernel_kasan_slub_debug.png"
+        title="../../kernel_kasan/kernel_kasan_slub_debug.png" /></p>
+</li>
+<li>
+<p>图中red_zone为右边界越界检测, red_left_pad为左边界越界检测, 这里对于red_left_pad着重说一下, 如果从第二幅图来看, 怎么也看不出左边界越界检测原理, 但是如果布局是第三幅图的话, 就非常明了了. 所以重点在于第二幅布局如何变成第三幅布局, slub的实现是, 每个obj在设计时仍然采用第二副布局, 但却在page开头开辟了一个red_left_pad, 这样就巧妙的完成了转换(至于为什么要经过这么一番转换, 只能说是历史遗留问题, 设计右边界越界检测时并没有考虑左边界越界)</p>
+</li>
+<li>
+<p>然后再说一下slub_debug的局限性, slub_debug虽然和kasan一样设计了red_zone但是, slub_debug的安全检测只在alloc/free时启动, 即如果一个越界内存块永远不被释放, 则安全漏洞很难被发现(为了解决这个问题, slub设计了slub_info可以主动的去触发安全检测, 但是和kasan相比, 在检测范围上仍然很局限 &mdash; 只能检测slub内存问题, 同时还有一个非常重要的问题, slub_debug的red_zone是和填充数据位于同一内存块, 是可以被修改的, 有被劫持的风险)</p>
+</li>
+<li>
+<p>关于slub_debug就说这么多, 继续研究slub_kasan(slub_kasan的布局在slub_debug上面再加一个)</p>
+</li>
+</ul>
+<h4 id="slub_debug">slub_debug</h4>
+<ul>
+<li>
+<p>kasan_poison_slab: 当创建kmem_cache时将page对应的shadow_mem标记为KASAN_KMALLOC_REDZONE, 表示内存不可访问</p>
+<div class="highlight"><pre class="chroma"><code class="language-c" data-lang="c"><span class="kt">void</span> <span class="nf">kasan_poison_slab</span><span class="p">(</span><span class="k">struct</span> <span class="n">page</span> <span class="o">*</span><span class="n">page</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">i</span><span class="p">;</span>
+
+    <span class="k">for</span> <span class="p">(</span><span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">compound_nr</span><span class="p">(</span><span class="n">page</span><span class="p">);</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span>
+        <span class="n">page_kasan_tag_reset</span><span class="p">(</span><span class="n">page</span> <span class="o">+</span> <span class="n">i</span><span class="p">);</span>
+    <span class="n">kasan_poison_shadow</span><span class="p">(</span><span class="n">page_address</span><span class="p">(</span><span class="n">page</span><span class="p">),</span> <span class="n">page_size</span><span class="p">(</span><span class="n">page</span><span class="p">),</span>
+            <span class="n">KASAN_KMALLOC_REDZONE</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div><pre><code>
+</code></pre></li>
+<li>
+<p>__kasan_kmalloc: 当使用kmalloc(x) 申请内存后, 有一部分内存可用, 填充red_zone, 修改shadow_mem(__kasan_kmalloc和下面全局变量修改shadow_mem的原理类似, 可以滑到下面看看全局变量_kasan, 大致思路就是填充从obj_start+size到obj末尾内存为red_zone)</p>
+</li>
+</ul>
+<h3 id="全局变量_kasan">全局变量_kasan</h3>
+<blockquote>
+<p>__asan_register_globals: 根据 struct kasan_global为全局变量填充shadow_mem, __asan_unregister_globals实现为空</p>
+</blockquote>
+<h4 id="验证代码-1">验证代码</h4>
+<ul>
+<li>
+<p>目标全局变量为global_var</p>
+<div class="highlight"><pre class="chroma"><code class="language-c" data-lang="c"><span class="kt">char</span> <span class="n">global_var</span><span class="p">[</span><span class="mi">34</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="sc">&#39;a&#39;</span><span class="p">,</span> <span class="sc">&#39;b&#39;</span><span class="p">,</span> <span class="sc">&#39;c&#39;</span><span class="p">,</span> <span class="sc">&#39;d&#39;</span><span class="p">};</span>
+
+<span class="kt">long</span> <span class="nf">kasan_ioctl</span><span class="p">(</span><span class="k">struct</span> <span class="n">file</span><span class="o">*</span> <span class="n">filp</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">cmd</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">arg</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">global_var</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="sc">&#39;x&#39;</span><span class="p">;</span>
+    <span class="n">global_var</span><span class="p">[</span><span class="mi">34</span><span class="p">]</span> <span class="o">=</span> <span class="sc">&#39;*&#39;</span><span class="p">;</span>
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div><pre><code>
+</code></pre></li>
+<li>
+<p>ida反汇编代码</p>
+<div class="highlight"><pre class="chroma"><code class="language-c" data-lang="c"><span class="kr">__int64</span> <span class="kr">__fastcall</span> <span class="nf">kasan_ioctl</span><span class="p">(</span><span class="n">file</span> <span class="o">*</span><span class="n">filp</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">cmd</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="kr">__int64</span> <span class="n">arg</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kr">__int64</span> <span class="n">result</span><span class="p">;</span> <span class="c1">// rax
+</span><span class="c1"></span>
+    <span class="n">_fentry__</span><span class="p">(</span><span class="n">filp</span><span class="p">,</span> <span class="n">cmd</span><span class="p">,</span> <span class="n">arg</span><span class="p">);</span>
+    <span class="n">global_var</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">120</span><span class="p">;</span>
+    <span class="n">_asan_store1_noabort</span><span class="p">(</span><span class="o">&amp;</span><span class="n">global_var</span><span class="p">[</span><span class="mi">34</span><span class="p">]);</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="mi">0LL</span><span class="p">;</span>
+    <span class="n">global_var</span><span class="p">[</span><span class="mi">34</span><span class="p">]</span> <span class="o">=</span> <span class="mi">42</span><span class="p">;</span>
+    <span class="k">return</span> <span class="n">result</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div><pre><code>
+</code></pre></li>
+</ul>
+<h4 id="全局变量-动态调试">全局变量 动态调试</h4>
+<ul>
+<li>
+<p>查看global_var内存(0xffffffffc000a000)与其对应的shadow_mem(0xfffffbfff8001400)发现, global_var存在34 bytes有效内存, 62 bytes为无效内存(red_zone)</p>
+<div class="highlight"><pre class="chroma"><code class="language-c" data-lang="c"><span class="n">gef</span><span class="err">➤</span>  <span class="n">disassemble</span>
+<span class="n">Dump</span> <span class="n">of</span> <span class="n">assembler</span> <span class="n">code</span> <span class="k">for</span> <span class="n">function</span> <span class="nl">kasan_ioctl</span><span class="p">:</span>
+<span class="o">=&gt;</span> <span class="mh">0xffffffffc0008000</span> <span class="o">&lt;+</span><span class="mi">0</span><span class="o">&gt;:</span>     <span class="n">data16</span> <span class="n">data16</span> <span class="n">data16</span> <span class="n">xchg</span> <span class="n">ax</span><span class="p">,</span><span class="n">ax</span>
+<span class="mh">0xffffffffc0008005</span> <span class="o">&lt;+</span><span class="mi">5</span><span class="o">&gt;:</span>     <span class="n">push</span>   <span class="n">rbp</span>
+<span class="mh">0xffffffffc0008006</span> <span class="o">&lt;+</span><span class="mi">6</span><span class="o">&gt;:</span>     <span class="n">mov</span>    <span class="n">rdi</span><span class="p">,</span><span class="mh">0xffffffffc000a022</span>
+<span class="mh">0xffffffffc000800d</span> <span class="o">&lt;+</span><span class="mi">13</span><span class="o">&gt;:</span>    <span class="n">mov</span>    <span class="n">BYTE</span> <span class="n">PTR</span> <span class="p">[</span><span class="n">rip</span><span class="o">+</span><span class="mh">0x1fec</span><span class="p">],</span><span class="mh">0x78</span>        <span class="err">#</span> <span class="mh">0xffffffffc000a000</span>
+<span class="mh">0xffffffffc0008014</span> <span class="o">&lt;+</span><span class="mi">20</span><span class="o">&gt;:</span>    <span class="n">mov</span>    <span class="n">rbp</span><span class="p">,</span><span class="n">rsp</span>
+<span class="mh">0xffffffffc0008017</span> <span class="o">&lt;+</span><span class="mi">23</span><span class="o">&gt;:</span>    <span class="n">call</span>   <span class="mh">0xffffffff8145d790</span> <span class="o">&lt;</span><span class="n">__asan_store1</span><span class="o">&gt;</span>
+<span class="mh">0xffffffffc000801c</span> <span class="o">&lt;+</span><span class="mi">28</span><span class="o">&gt;:</span>    <span class="n">xor</span>    <span class="n">eax</span><span class="p">,</span><span class="n">eax</span>
+<span class="mh">0xffffffffc000801e</span> <span class="o">&lt;+</span><span class="mi">30</span><span class="o">&gt;:</span>    <span class="n">mov</span>    <span class="n">BYTE</span> <span class="n">PTR</span> <span class="p">[</span><span class="n">rip</span><span class="o">+</span><span class="mh">0x1ffd</span><span class="p">],</span><span class="mh">0x2a</span>        <span class="err">#</span> <span class="mh">0xffffffffc000a022</span>
+<span class="mh">0xffffffffc0008025</span> <span class="o">&lt;+</span><span class="mi">37</span><span class="o">&gt;:</span>    <span class="n">pop</span>    <span class="n">rbp</span>
+<span class="mh">0xffffffffc0008026</span> <span class="o">&lt;+</span><span class="mi">38</span><span class="o">&gt;:</span>    <span class="n">ret</span>
+<span class="n">End</span> <span class="n">of</span> <span class="n">assembler</span> <span class="n">dump</span><span class="p">.</span>
+<span class="n">gef</span><span class="err">➤</span>  <span class="n">x</span><span class="o">/</span><span class="mi">2</span><span class="n">xg</span> <span class="mh">0xffffffffc000a000</span>
+<span class="mh">0xffffffffc000a000</span><span class="o">:</span>     <span class="mh">0x0000000064636261</span>      <span class="mh">0x0000000000000000</span>
+<span class="n">gef</span><span class="err">➤</span>  <span class="n">x</span><span class="o">/</span><span class="mi">2</span><span class="n">xg</span> <span class="mh">0xfffffbfff8001400</span>
+<span class="mh">0xfffffbfff8001400</span><span class="o">:</span>     <span class="mh">0xfafafa0200000000</span>      <span class="mh">0x00000000fafafafa</span>
+<span class="n">gef</span><span class="err">➤</span>
+</code></pre></div><pre><code>
+</code></pre></li>
+<li>
+<p>进一步验证red_zone原理(ida显示驱动init_array段中存在指向__asan_register_globals的函数指针, 显然在驱动初始化阶段会调用该函数)</p>
+</li>
+<li>
+<p>分析__asan_register_globals源码发现一个用来修饰全局变量的结构体(存放于.data段), 结合ida反汇编结果后填充结构体如下:</p>
+<div class="highlight"><pre class="chroma"><code class="language-c" data-lang="c"><span class="k">struct</span> <span class="n">kasan_global</span> <span class="p">{</span>
+    <span class="k">const</span> <span class="kt">void</span> <span class="o">*</span><span class="n">beg</span><span class="o">=</span><span class="mh">0xffffffffc000a000</span><span class="p">;</span>		<span class="cm">/* Address of the beginning of the global variable. */</span>
+    <span class="n">size_t</span> <span class="n">size</span><span class="o">=</span><span class="mh">0x22</span><span class="p">;</span>			<span class="cm">/* Size of the global variable. */</span>
+    <span class="n">size_t</span> <span class="n">size_with_redzone</span><span class="o">=</span><span class="mh">0x60</span><span class="p">;</span>	<span class="cm">/* Size of the variable + size of the red zone. 32 bytes aligned */</span>
+    <span class="k">const</span> <span class="kt">void</span> <span class="o">*</span><span class="n">name</span><span class="o">=</span><span class="s">&#34;global_var&#34;</span><span class="p">;</span>
+    <span class="k">const</span> <span class="kt">void</span> <span class="o">*</span><span class="n">module_name</span><span class="o">=</span><span class="s">&#34;/home/povcfe/code/modules/kasan/kasan.c&#34;</span><span class="p">;</span>	<span class="cm">/* Name of the module where the global variable is declared. */</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">has_dynamic_init</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span>	<span class="cm">/* This needed for C++ */</span>
+<span class="cp">#if KASAN_ABI_VERSION &gt;= 4
+</span><span class="cp"></span>    <span class="k">struct</span> <span class="n">kasan_source_location</span> <span class="o">*</span><span class="n">location</span><span class="p">;</span>
+<span class="cp">#endif
+</span><span class="cp">#if KASAN_ABI_VERSION &gt;= 5
+</span><span class="cp"></span>    <span class="kt">char</span> <span class="o">*</span><span class="n">odr_indicator</span><span class="o">=</span><span class="s">&#34;/home/povcfe/code/modules/kasan/kasan.c&#34;</span><span class="p">;</span>
+<span class="cp">#endif
+</span><span class="cp"></span><span class="p">};</span>
+</code></pre></div><pre><code>
+</code></pre></li>
+<li>
+<p>size_with_redzone=0x60, 动调时发现redzone为62(0x3e) bytes, 显然此处size_with_redzone不可能被直接使用, 继续分析源码</p>
+</li>
+<li>
+<p>__asan_register_globals-&gt;register_global(特别关注aligned_size, 这里会解决上诉问题)</p>
+<div class="highlight"><pre class="chroma"><code class="language-c" data-lang="c"><span class="k">static</span> <span class="kt">void</span> <span class="nf">register_global</span><span class="p">(</span><span class="k">struct</span> <span class="n">kasan_global</span> <span class="o">*</span><span class="n">global</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">size_t</span> <span class="n">aligned_size</span> <span class="o">=</span> <span class="n">round_up</span><span class="p">(</span><span class="n">global</span><span class="o">-&gt;</span><span class="n">size</span><span class="p">,</span> <span class="n">KASAN_SHADOW_SCALE_SIZE</span><span class="p">);</span>
+
+    <span class="c1">// 设置有效内存对应的shadow_mem, 特别注意内存组内有效N byte不足8 bytes时, 需要设置shadow_value=N
+</span><span class="c1"></span>    <span class="n">kasan_unpoison_shadow</span><span class="p">(</span><span class="n">global</span><span class="o">-&gt;</span><span class="n">beg</span><span class="p">,</span> <span class="n">global</span><span class="o">-&gt;</span><span class="n">size</span><span class="p">);</span>
+
+    <span class="c1">// 填充8 bytes对齐的redzone对应的shadow_mem为KASAN_GLOBAL_REDZONE
+</span><span class="c1"></span>    <span class="n">kasan_poison_shadow</span><span class="p">(</span><span class="n">global</span><span class="o">-&gt;</span><span class="n">beg</span> <span class="o">+</span> <span class="n">aligned_size</span><span class="p">,</span>
+        <span class="n">global</span><span class="o">-&gt;</span><span class="n">size_with_redzone</span> <span class="o">-</span> <span class="n">aligned_size</span><span class="p">,</span>
+        <span class="n">KASAN_GLOBAL_REDZONE</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div><pre><code>
+</code></pre></li>
+<li>
+<p>aligned_size</p>
+<div class="highlight"><pre class="chroma"><code class="language-c" data-lang="c"><span class="cp">#define __round_mask(x, y) ((__typeof__(x))((y)-1))
+</span><span class="cp">#define round_up(x, y) ((((x)-1) | __round_mask(x, y))+1)
+</span></code></pre></div><pre><code>
+</code></pre></li>
+<li>
+<p>算数太差, 直接用c实现了一下, aligned_size=0x28</p>
+<div class="highlight"><pre class="chroma"><code class="language-c" data-lang="c"><span class="cp">#include</span> <span class="cpf">&lt;stdio.h&gt;</span><span class="cp">
+</span><span class="cp"></span>
+<span class="n">size_t</span> <span class="nf">__round_mask</span><span class="p">(</span><span class="n">size_t</span> <span class="n">x</span><span class="p">,</span> <span class="n">size_t</span> <span class="n">y</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">return</span> <span class="p">((</span><span class="n">__typeof__</span><span class="p">(</span><span class="n">x</span><span class="p">))((</span><span class="n">y</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">));</span>
+<span class="p">}</span>
+
+<span class="n">size_t</span> <span class="nf">round_up</span><span class="p">(</span><span class="n">size_t</span> <span class="n">x</span><span class="p">,</span> <span class="n">size_t</span> <span class="n">y</span><span class="p">)</span>
+<span class="p">{</span>   
+    <span class="k">return</span> <span class="p">((((</span><span class="n">x</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="o">|</span> <span class="n">__round_mask</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">))</span><span class="o">+</span><span class="mi">1</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="kt">int</span> <span class="nf">main</span><span class="p">()</span>
+<span class="p">{</span>
+    <span class="n">size_t</span> <span class="n">res</span> <span class="o">=</span> <span class="n">round_up</span><span class="p">(</span><span class="mh">0x22</span><span class="p">,</span> <span class="mi">7</span><span class="p">);</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&#34;0x%lx&#34;</span><span class="p">,</span> <span class="n">res</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div><pre><code>
+</code></pre></li>
+<li>
+<p>故 global-&gt;size_with_redzone(0x60) = 0x28(0x22(size) + 0x6(red_zone)) + 0x38(red_zone), 即有效内存空间0x22 bytes, red_zone(0x6 + 0x38) bytes</p>
+</li>
+</ul>
+<h3 id="栈变量_kasan">栈变量_kasan</h3>
+<blockquote>
+<p>__kasan_unpoison_stack: 设置栈内有效内存shadow_mem</p>
+</blockquote>
+<h4 id="验证代码-2">验证代码</h4>
+<ul>
+<li>
+<p>目标栈变量 stack_var</p>
+<div class="highlight"><pre class="chroma"><code class="language-c" data-lang="c"><span class="kt">long</span> <span class="nf">kasan_ioctl</span><span class="p">(</span><span class="k">struct</span> <span class="n">file</span><span class="o">*</span> <span class="n">filp</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">cmd</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">arg</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">char</span> <span class="n">stack_var</span><span class="p">[</span><span class="mh">0x4</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="sc">&#39;a&#39;</span><span class="p">,</span> <span class="sc">&#39;b&#39;</span><span class="p">,</span> <span class="sc">&#39;c&#39;</span><span class="p">,</span> <span class="sc">&#39;d&#39;</span><span class="p">};</span>
+    <span class="n">stack_var</span><span class="p">[</span><span class="mh">0x0</span><span class="p">]</span> <span class="o">=</span> <span class="sc">&#39;x&#39;</span><span class="p">;</span>
+      
+    <span class="n">printk</span><span class="p">(</span><span class="n">KERN_DEBUG</span> <span class="s">&#34;[+] %s</span><span class="se">\n</span><span class="s">&#34;</span><span class="p">,</span> <span class="n">stack_var</span><span class="p">);</span>
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div><pre><code>
+</code></pre></li>
+<li>
+<p>ida反汇编代码(注意到0xF1(KASAN_STACK_LEFT), 0xF3(KASAN_STACK_RIGHT)字段, 猜测stack_kasan的shadow_mem填充代码是直接通过编译器插入源代码中的)</p>
+<div class="highlight"><pre class="chroma"><code class="language-c" data-lang="c"><span class="kr">__int64</span> <span class="kr">__fastcall</span> <span class="nf">kasan_ioctl</span><span class="p">(</span><span class="n">file</span> <span class="o">*</span><span class="n">filp</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">cmd</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="kr">__int64</span> <span class="n">arg</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">_DWORD</span> <span class="o">*</span><span class="n">v3</span><span class="p">;</span> <span class="c1">// rbx
+</span><span class="c1"></span>    <span class="n">_QWORD</span> <span class="n">v5</span><span class="p">[</span><span class="mi">4</span><span class="p">];</span> <span class="c1">// [rsp-70h] [rbp-70h] BYREF
+</span><span class="c1"></span>    <span class="kt">int</span> <span class="n">v6</span><span class="p">;</span> <span class="c1">// [rsp-50h] [rbp-50h] BYREF
+</span><span class="c1"></span>    <span class="kt">unsigned</span> <span class="kr">__int64</span> <span class="n">v7</span><span class="p">;</span> <span class="c1">// [rsp-18h] [rbp-18h]
+</span><span class="c1"></span>
+    <span class="n">_fentry__</span><span class="p">(</span><span class="n">filp</span><span class="p">,</span> <span class="n">cmd</span><span class="p">,</span> <span class="n">arg</span><span class="p">);</span>
+    <span class="n">v3</span> <span class="o">=</span> <span class="p">(</span><span class="n">_DWORD</span> <span class="o">*</span><span class="p">)(((</span><span class="kt">unsigned</span> <span class="kr">__int64</span><span class="p">)</span><span class="n">v5</span> <span class="o">&gt;&gt;</span> <span class="mi">3</span><span class="p">)</span> <span class="o">-</span> <span class="mh">0x2000040000000000LL</span><span class="p">);</span>
+    <span class="n">v5</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1102416563LL</span><span class="p">;</span>
+    <span class="n">v5</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="s">&#34;1 32 4 12 stack_var:15&#34;</span><span class="p">;</span>
+    <span class="n">v5</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">kasan_ioctl</span><span class="p">;</span>
+    <span class="o">*</span><span class="n">v3</span> <span class="o">=</span> <span class="mh">0xF1F1F1F1</span><span class="p">;</span>
+    <span class="n">v3</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="mh">0xF3F3F304</span><span class="p">;</span>
+    <span class="n">v7</span> <span class="o">=</span> <span class="n">__readgsqword</span><span class="p">(</span><span class="mh">0x28u</span><span class="p">);</span>
+    <span class="n">v6</span> <span class="o">=</span> <span class="mh">0x64636278</span><span class="p">;</span>
+    <span class="n">printk</span><span class="p">(</span><span class="o">&amp;</span><span class="n">unk_220</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">v6</span><span class="p">);</span>
+    <span class="o">*</span><span class="p">(</span><span class="n">_QWORD</span> <span class="o">*</span><span class="p">)</span><span class="n">v3</span> <span class="o">=</span> <span class="mi">0LL</span><span class="p">;</span>
+    <span class="k">return</span> <span class="mi">0LL</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div><pre><code>
+</code></pre></li>
+</ul>
+<h4 id="栈变量-动态调试">栈变量 动态调试</h4>
+<ul>
+<li>
+<p>根据ida反汇编代码猜测栈变量存在左右边界(red_zone)且关于32 bytes对齐</p>
+</li>
+<li>
+<p>stack_var(0xffff88805b02fcf0)与其shadow_mem(0xffffed100b605f9e)内容如下, 可知栈变量有效内存为4 bytes, red_zone_size: (8 * 3 + 8 - 4) + 8 * 3 = 52(左边界red_zone为32bytes, 右边界red_zone+size关于32 bytes对齐, 总red_zone大小与全局变量相同)</p>
+<div class="highlight"><pre class="chroma"><code class="language-c" data-lang="c"><span class="n">gef</span><span class="err">➤</span>  <span class="n">x</span><span class="o">/</span><span class="mi">8</span><span class="n">xg</span> <span class="mh">0xffff88805b02fcf0</span><span class="o">-</span><span class="mh">0x20</span>
+<span class="mh">0xffff88805b02fcd0</span><span class="o">:</span>     <span class="mh">0x0000000041b58ab3</span>      <span class="mh">0xffffffffc000903c</span>
+<span class="mh">0xffff88805b02fce0</span><span class="o">:</span>     <span class="mh">0xffffffffc00080e1</span>      <span class="mh">0xffff88805e404500</span>
+<span class="mh">0xffff88805b02fcf0</span><span class="o">:</span>     <span class="mh">0xffff888064636261</span>      <span class="mh">0x0000000200000101</span>
+<span class="mh">0xffff88805b02fd00</span><span class="o">:</span>     <span class="mh">0x000000000000004c</span>      <span class="mh">0x0000000000000000</span>
+<span class="n">gef</span><span class="err">➤</span>  <span class="n">x</span><span class="o">/</span><span class="mi">4</span><span class="n">xg</span> <span class="mh">0xffffed100b605f9e</span><span class="o">-</span><span class="mh">0x10</span>
+<span class="mh">0xffffed100b605f8e</span><span class="o">:</span>     <span class="mh">0x0000000000000000</span>      <span class="mh">0xf1f1f1f100000000</span>
+<span class="mh">0xffffed100b605f9e</span><span class="o">:</span>     <span class="mh">0x00000000f3f3f304</span>      <span class="mh">0x0000000000000000</span>
+<span class="n">gef</span><span class="err">➤</span>
+</code></pre></div><pre><code>
+</code></pre></li>
+<li>
+<p>待函数返回(栈变量销毁时), 会将shadow_mem置0(见ida伪代码)</p>
+<div class="highlight"><pre class="chroma"><code class="language-c" data-lang="c"><span class="o">*</span><span class="p">(</span><span class="n">_QWORD</span> <span class="o">*</span><span class="p">)</span><span class="n">v3</span> <span class="o">=</span> <span class="mi">0LL</span><span class="p">;</span>
+</code></pre></div><pre><code>
+</code></pre></li>
+<li>
+<p>在kasan源码中没有找到填充red_zone的代码, 且栈变量左边界red_zone对应的内存处存放了栈变量信息, 函数信息. 所以猜测栈变量填充red_zone是在编译阶段实现的, 且左边界填充内容为用于描述栈的结构体</p>
+</li>
+</ul>
+</div><div class="post-footer" id="post-footer">
+    <div class="post-info">
+        <div class="post-info-line">
+            <div class="post-info-mod">
+                <span>更新于 2021-03-21</span>
+            </div>
+            <div class="post-info-license"></div>
+        </div>
+        <div class="post-info-line">
+            <div class="post-info-md"></div>
+            <div class="post-info-share">
+                <span></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="post-info-more">
+        <section class="post-tags"><i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/linux-kernel/">linux kernel</a>,&nbsp;<a href="/tags/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/">源码分析</a>,&nbsp;<a href="/tags/%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6/">安全机制</a></section>
+        <section>
+            <span><a href="javascript:void(0);" onclick="window.history.back();">返回</a></span>&nbsp;|&nbsp;<span><a href="/">主页</a></span>
+        </section>
+    </div>
+
+    <div class="post-nav"><a href="/posts/reprint/" class="prev" rel="prev" title="一些思考"><i class="fas fa-angle-left fa-fw"></i>一些思考</a>
+            <a href="/posts/kernel_net/" class="next" rel="next" title="linux内核(5.4.81)---网络模块源码分析">linux内核(5.4.81)---网络模块源码分析<i class="fas fa-angle-right fa-fw"></i></a></div>
+</div>
+</article></div>
+            </main><footer class="footer">
+        <div class="footer-container"><div class="footer-line">
+                </div><div class="footer-line"><i class="far fa-copyright fa-fw"></i><span itemprop="copyrightYear">2022</span><span class="author" itemprop="copyrightHolder">&nbsp;<a href="/" target="_blank"></a></span></div>
+        </div>
+    </footer></div>
+
+        <div id="fixed-buttons"><a href="#" id="back-to-top" class="fixed-button" title="回到顶部">
+                <i class="fas fa-arrow-up fa-fw"></i>
+            </a><a href="#" id="view-comments" class="fixed-button" title="查看评论">
+                <i class="fas fa-comment fa-fw"></i>
+            </a>
+        </div><script type="text/javascript" src="/lib/smooth-scroll/smooth-scroll.min.js"></script><script type="text/javascript" src="/lib/lazysizes/lazysizes.min.js"></script><script type="text/javascript" src="/lib/clipboard/clipboard.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"复制到剪贴板","maxShownLines":10},"comment":{}};</script><script type="text/javascript" src="/js/theme.min.js"></script></body>
+</html>

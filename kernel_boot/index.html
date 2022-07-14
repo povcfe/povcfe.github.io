@@ -1,0 +1,1202 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="robots" content="noodp" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge, chrome=1">
+        <title>linux内核(5.4.81)---内核引导 - LoveIt</title><meta name="Description" content="About LoveIt Theme"><meta property="og:title" content="linux内核(5.4.81)---内核引导" />
+<meta property="og:description" content="发表于看雪论坛
+ 本文详细讲解linux内核的加载过程，参考linux-insiders，并结合linux-5.6.6代码对原文的部分老旧内容做修改
+ 引导   按下电源开关后, CPU设置寄存器为预定值，程序在实模式下运行，程序首先执行0xfffffff0(映射至ROM)处内容，此处为复位向量，直接跳转至BIOS。
+  BIOS初始化，检查硬件，寻找可引导设备，跳转至引导扇区代码(boot.img)
+  寻找可引导设备方式: 定位MBR分区, 引导扇区存储在第一个扇区(512字节)的头446字节处。引导扇区以0x55和0xaa(magic bytes)结束。
+  MBR分区代码只占用一个扇区, 空间较小，只执行了一些初始化工作, 然后跳转至GRUB2的core image(以diskboot.img为起始)继续执行。
+    core image的初始化代码将剩余的core image(包含GRUB 2的内核代码和文件系统驱动)加载到内存中，运行grub_main
+  grub_main 初始化控制台，计算模块基地址，设置root设备，读取 grub 配置文件，加载模块等，最后将grub切换为normal模式
+  normal模式调用grub_normal_execute完成最后的准备工作，显示一个菜单列出可用的操作系统。
+  选择操作系统后grub_menu_execute_entry被调用，用以运行boot命令，引导操作系统, 运行kernel代码
+  内核自带bootloader，但是新版本内核已经弃用
+  kernel boot protocol规定，bootloader必须具备协议中规定的头信息
+      实模式运行内核   kernel地址(header.S _start)位于X &#43; sizeof(KernelBootSector) &#43; 1
+ 内核加载进入内存后，空间排布  1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21  | Protected-mode kernel | 100000 &#43;------------------------&#43; | I/O memory hole | 0A0000 &#43;------------------------&#43; | Reserved for BIOS | Leave as much as possible unused ~ ~ | Command line | (Can also be below the X&#43;10000 mark) X&#43;10000 &#43;------------------------&#43; | Stack/heap | For use by the kernel real-mode code." />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://povcfe.github.io/kernel_boot/" />
+<meta property="og:image" content="https://povcfe.github.io/logo.png"/>
+<meta property="article:published_time" content="2020-06-06T10:34:06-08:00" />
+<meta property="article:modified_time" content="2020-06-06T10:34:06-08:00" />
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="https://povcfe.github.io/logo.png"/>
+
+<meta name="twitter:title" content="linux内核(5.4.81)---内核引导"/>
+<meta name="twitter:description" content="发表于看雪论坛
+ 本文详细讲解linux内核的加载过程，参考linux-insiders，并结合linux-5.6.6代码对原文的部分老旧内容做修改
+ 引导   按下电源开关后, CPU设置寄存器为预定值，程序在实模式下运行，程序首先执行0xfffffff0(映射至ROM)处内容，此处为复位向量，直接跳转至BIOS。
+  BIOS初始化，检查硬件，寻找可引导设备，跳转至引导扇区代码(boot.img)
+  寻找可引导设备方式: 定位MBR分区, 引导扇区存储在第一个扇区(512字节)的头446字节处。引导扇区以0x55和0xaa(magic bytes)结束。
+  MBR分区代码只占用一个扇区, 空间较小，只执行了一些初始化工作, 然后跳转至GRUB2的core image(以diskboot.img为起始)继续执行。
+    core image的初始化代码将剩余的core image(包含GRUB 2的内核代码和文件系统驱动)加载到内存中，运行grub_main
+  grub_main 初始化控制台，计算模块基地址，设置root设备，读取 grub 配置文件，加载模块等，最后将grub切换为normal模式
+  normal模式调用grub_normal_execute完成最后的准备工作，显示一个菜单列出可用的操作系统。
+  选择操作系统后grub_menu_execute_entry被调用，用以运行boot命令，引导操作系统, 运行kernel代码
+  内核自带bootloader，但是新版本内核已经弃用
+  kernel boot protocol规定，bootloader必须具备协议中规定的头信息
+      实模式运行内核   kernel地址(header.S _start)位于X &#43; sizeof(KernelBootSector) &#43; 1
+ 内核加载进入内存后，空间排布  1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21  | Protected-mode kernel | 100000 &#43;------------------------&#43; | I/O memory hole | 0A0000 &#43;------------------------&#43; | Reserved for BIOS | Leave as much as possible unused ~ ~ | Command line | (Can also be below the X&#43;10000 mark) X&#43;10000 &#43;------------------------&#43; | Stack/heap | For use by the kernel real-mode code."/>
+<meta name="application-name" content="LoveIt">
+<meta name="apple-mobile-web-app-title" content="LoveIt"><meta name="theme-color" content="#ffffff"><meta name="msapplication-TileColor" content="#da532c"><link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"><link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5"><link rel="manifest" href="/site.webmanifest"><link rel="canonical" href="https://povcfe.github.io/kernel_boot/" /><link rel="prev" href="https://povcfe.github.io/kernel_rw4/" /><link rel="next" href="https://povcfe.github.io/kernel_mm/" /><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/normalize.css@8.0.1/normalize.min.css"><link rel="stylesheet" href="/css/style.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.13.0/css/all.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/animate.css@3.7.2/animate.min.css"><script type="application/ld+json">
+    {
+        "@context": "http://schema.org",
+        "@type": "BlogPosting",
+        "headline": "linux内核(5.4.81)---内核引导",
+        "inLanguage": "en",
+        "mainEntityOfPage": {
+            "@type": "WebPage",
+            "@id": "https:\/\/povcfe.github.io\/kernel_boot\/"
+        },"image": ["https:\/\/povcfe.github.io\/images\/Apple-Devices-Preview.png"],"genre": "posts","keywords": "linux kernel, 源码分析, boot","wordcount":  1907 ,
+        "url": "https:\/\/povcfe.github.io\/kernel_boot\/","datePublished": "2020-06-06T10:34:06-08:00","dateModified": "2020-06-06T10:34:06-08:00","license": "This work is licensed under a Creative Commons Attribution-NonCommercial 4.0 International License.","publisher": {
+            "@type": "Organization",
+            "name": "xxxx","logo": "https:\/\/povcfe.github.io\/images\/avatar.png"},"author": {
+                "@type": "Person",
+                "name": "xxxx"
+            },"description": ""
+    }
+    </script></head>
+    <body header-desktop="fixed" header-mobile="auto"><script type="text/javascript">(window.localStorage && localStorage.getItem('theme') ? localStorage.getItem('theme') === 'dark' : ('auto' === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : 'auto' === 'dark')) && document.body.setAttribute('theme', 'dark');</script>
+
+        <div id="mask"></div><div class="wrapper"><header class="desktop" id="header-desktop">
+    <div class="header-wrapper">
+        <div class="header-title">
+            <a href="/" title="LoveIt"><span class="header-title-pre"><i class='far fa-kiss-wink-heart fa-fw'></i></span>LoveIt</a>
+        </div>
+        <div class="menu">
+            <div class="menu-inner"><a class="menu-item" href="/posts/"> Posts </a><a class="menu-item" href="/tags/"> Tags </a><a class="menu-item" href="/categories/"> Categories </a><a class="menu-item" href="/categories/documentation/"> Docs </a><a class="menu-item" href="/about/"> About </a><a class="menu-item" href="https://github.com/dillonzq/LoveIt" title="GitHub" rel="noopener noreffer" target="_blank"><i class='fab fa-github fa-fw'></i>  </a><span class="menu-item delimiter"></span><a href="javascript:void(0);" class="menu-item language" title="Select Language">English<i class="fas fa-chevron-right fa-fw"></i>
+                        <select class="language-select" id="language-select-desktop" onchange="location = this.value;"><option value="/kernel_boot/" selected>English</option></select>
+                    </a><span class="menu-item search" id="search-desktop">
+                        <input type="text" placeholder="Search titles or contents..." id="search-input-desktop">
+                        <a href="javascript:void(0);" class="search-button search-toggle" id="search-toggle-desktop" title="Search">
+                            <i class="fas fa-search fa-fw"></i>
+                        </a>
+                        <a href="javascript:void(0);" class="search-button search-clear" id="search-clear-desktop" title="Clear">
+                            <i class="fas fa-times-circle fa-fw"></i>
+                        </a>
+                        <span class="search-button search-loading" id="search-loading-desktop">
+                            <i class="fas fa-spinner fa-fw fa-spin"></i>
+                        </span>
+                    </span><a href="javascript:void(0);" class="menu-item theme-switch" title="Switch Theme">
+                    <i class="fas fa-adjust fa-fw"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</header><header class="mobile" id="header-mobile">
+    <div class="header-container">
+        <div class="header-wrapper">
+            <div class="header-title">
+                <a href="/" title="LoveIt"><span class="header-title-pre"><i class='far fa-kiss-wink-heart fa-fw'></i></span>LoveIt</a>
+            </div>
+            <div class="menu-toggle" id="menu-toggle-mobile">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+        <div class="menu" id="menu-mobile"><div class="search-wrapper">
+                    <div class="search mobile" id="search-mobile">
+                        <input type="text" placeholder="Search titles or contents..." id="search-input-mobile">
+                        <a href="javascript:void(0);" class="search-button search-toggle" id="search-toggle-mobile" title="Search">
+                            <i class="fas fa-search fa-fw"></i>
+                        </a>
+                        <a href="javascript:void(0);" class="search-button search-clear" id="search-clear-mobile" title="Clear">
+                            <i class="fas fa-times-circle fa-fw"></i>
+                        </a>
+                        <span class="search-button search-loading" id="search-loading-mobile">
+                            <i class="fas fa-spinner fa-fw fa-spin"></i>
+                        </span>
+                    </div>
+                    <a href="javascript:void(0);" class="search-cancel" id="search-cancel-mobile">
+                        Cancel
+                    </a>
+                </div><a class="menu-item" href="/posts/" title="">Posts</a><a class="menu-item" href="/tags/" title="">Tags</a><a class="menu-item" href="/categories/" title="">Categories</a><a class="menu-item" href="/categories/documentation/" title="">Docs</a><a class="menu-item" href="/about/" title="">About</a><a class="menu-item" href="https://github.com/dillonzq/LoveIt" title="GitHub" rel="noopener noreffer" target="_blank"><i class='fab fa-github fa-fw'></i></a><a href="javascript:void(0);" class="menu-item theme-switch" title="Switch Theme">
+                <i class="fas fa-adjust fa-fw"></i>
+            </a><a href="javascript:void(0);" class="menu-item" title="Select Language">English<i class="fas fa-chevron-right fa-fw"></i>
+                    <select class="language-select" onchange="location = this.value;"><option value="/kernel_boot/" selected>English</option></select>
+                </a></div>
+    </div>
+</header>
+<div class="search-dropdown desktop">
+    <div id="search-dropdown-desktop"></div>
+</div>
+<div class="search-dropdown mobile">
+    <div id="search-dropdown-mobile"></div>
+</div>
+<main class="main">
+                <div class="container"><div class="toc" id="toc-auto">
+            <h2 class="toc-title">Contents</h2>
+            <div class="toc-content" id="toc-content-auto"></div>
+        </div><article class="page single"><h1 class="single-title animated flipInX">linux内核(5.4.81)---内核引导</h1><div class="post-meta">
+            <div class="post-meta-line"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>xxxx</a></span>&nbsp;<span class="post-category">included in <a href="/categories/linux%E5%86%85%E6%A0%B8%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/"><i class="far fa-folder fa-fw"></i>linux内核源码分析</a></span></div>
+            <div class="post-meta-line"><i class="far fa-calendar-alt fa-fw"></i>&nbsp;<time datetime="2020-06-06">2020-06-06</time>&nbsp;<i class="fas fa-pencil-alt fa-fw"></i>&nbsp;1907 words&nbsp;
+                <i class="far fa-clock fa-fw"></i>&nbsp;9 minutes&nbsp;<span id="/kernel_boot/" class="leancloud_visitors" data-flag-title="linux内核(5.4.81)---内核引导">
+                        <i class="far fa-eye fa-fw"></i>&nbsp;<span class=leancloud-visitors-count></span>&nbsp;views
+                    </span>&nbsp;</div>
+        </div><div class="details toc" id="toc-static"  kept="">
+                <div class="details-summary toc-title">
+                    <span>Contents</span>
+                    <span><i class="details-icon fas fa-angle-right"></i></span>
+                </div>
+                <div class="details-content toc-content" id="toc-content-static"><nav id="TableOfContents"></nav></div>
+            </div><div class="content" id="content"><p><a href="https://bbs.pediy.com/user-839858.htm" target="_blank" rel="noopener noreffer">发表于看雪论坛</a></p>
+<blockquote>
+<p>本文详细讲解linux内核的加载过程，参考linux-insiders，并结合linux-5.6.6代码对原文的部分老旧内容做修改</p>
+</blockquote>
+<h1 id="引导">引导</h1>
+<ol>
+<li>
+<p>按下电源开关后, CPU设置寄存器为预定值，程序在实模式下运行，程序首先执行0xfffffff0(映射至ROM)处内容，此处为复位向量，直接跳转至BIOS。</p>
+</li>
+<li>
+<p>BIOS初始化，检查硬件，寻找可引导设备，跳转至引导扇区代码(boot.img)</p>
+<ul>
+<li>
+<p>寻找可引导设备方式: 定位MBR分区, 引导扇区存储在第一个扇区(512字节)的头446字节处。引导扇区以0x55和0xaa(magic bytes)结束。</p>
+</li>
+<li>
+<p>MBR分区代码只占用一个扇区, 空间较小，只执行了一些初始化工作, 然后跳转至GRUB2的core image(以diskboot.img为起始)继续执行。</p>
+</li>
+</ul>
+</li>
+<li>
+<p>core image的初始化代码将剩余的core image(包含GRUB 2的内核代码和文件系统驱动)加载到内存中，运行grub_main</p>
+<ul>
+<li>
+<p>grub_main 初始化控制台，计算模块基地址，设置root设备，读取 grub 配置文件，加载模块等，最后将grub切换为normal模式</p>
+</li>
+<li>
+<p>normal模式调用grub_normal_execute完成最后的准备工作，显示一个菜单列出可用的操作系统。</p>
+</li>
+<li>
+<p>选择操作系统后grub_menu_execute_entry被调用，用以运行boot命令，引导操作系统, 运行kernel代码</p>
+<ul>
+<li>
+<p>内核自带bootloader，但是新版本内核已经弃用</p>
+</li>
+<li>
+<p>kernel boot protocol规定，bootloader必须具备协议中规定的头信息</p>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+<h1 id="实模式运行内核">实模式运行内核</h1>
+<ol>
+<li>
+<p>kernel地址(header.S _start)位于X + sizeof(KernelBootSector) + 1</p>
+<ul>
+<li>内核加载进入内存后，空间排布</li>
+</ul>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-fallback" data-lang="fallback">        | Protected-mode kernel  |
+100000   +------------------------+
+        | I/O memory hole        |
+0A0000   +------------------------+
+        | Reserved for BIOS      | Leave as much as possible unused
+        ~                        ~
+        | Command line           | (Can also be below the X+10000 mark)
+X+10000  +------------------------+
+        | Stack/heap             | For use by the kernel real-mode code.
+X+08000  +------------------------+
+        | Kernel setup           | The kernel real-mode code.
+        | Kernel boot sector     | The kernel legacy boot sector.
+    X +------------------------+
+        | Boot loader            | &lt;- Boot sector entry point 0x7C00
+001000   +------------------------+
+        | Reserved for MBR/BIOS  |
+000800   +------------------------+
+        | Typically used by MBR  |
+000600   +------------------------+
+        | BIOS use only          |
+000000   +------------------------+
+</code></pre></td></tr></table>
+</div>
+</div><ul>
+<li>kernel初始代码功能: 设置段寄存器，堆栈，BSS段，跳转进入main</li>
+</ul>
+</li>
+<li>
+<p>main函数(主要用来填充boot_params参数)</p>
+<ul>
+<li>main函数解析
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span><span class="lnt">39
+</span><span class="lnt">40
+</span><span class="lnt">41
+</span><span class="lnt">42
+</span><span class="lnt">43
+</span><span class="lnt">44
+</span><span class="lnt">45
+</span><span class="lnt">46
+</span><span class="lnt">47
+</span><span class="lnt">48
+</span><span class="lnt">49
+</span><span class="lnt">50
+</span><span class="lnt">51
+</span><span class="lnt">52
+</span><span class="lnt">53
+</span><span class="lnt">54
+</span><span class="lnt">55
+</span><span class="lnt">56
+</span><span class="lnt">57
+</span><span class="lnt">58
+</span><span class="lnt">59
+</span><span class="lnt">60
+</span><span class="lnt">61
+</span><span class="lnt">62
+</span><span class="lnt">63
+</span><span class="lnt">64
+</span><span class="lnt">65
+</span><span class="lnt">66
+</span><span class="lnt">67
+</span><span class="lnt">68
+</span><span class="lnt">69
+</span><span class="lnt">70
+</span><span class="lnt">71
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-c" data-lang="c"><span class="n">copy_boot_params</span><span class="p">();</span>
+<span class="cm">/* 
+</span><span class="cm">1. 将header.S中定义的hdr拷贝到boot_params结构体的
+</span><span class="cm">struct setup_header hdr中。
+</span><span class="cm">2. 如果内核是通过老的命令行协议运行起来的，那么就更新
+</span><span class="cm">内核的命令行指针(boot_params.hdr.cmd_line_ptr)。
+</span><span class="cm">*/</span>
+<span class="cm">/* Initialize the early-boot console */</span>
+<span class="n">console_init</span><span class="p">();</span>
+<span class="cm">/*
+</span><span class="cm">根据命令行参数设置串口,例如ttyS0
+</span><span class="cm">*/</span>
+<span class="k">if</span> <span class="p">(</span><span class="n">cmdline_find_option_bool</span><span class="p">(</span><span class="s">&#34;debug&#34;</span><span class="p">))</span>
+        <span class="n">puts</span><span class="p">(</span><span class="s">&#34;early console in setup code</span><span class="se">\n</span><span class="s">&#34;</span><span class="p">);</span>
+
+<span class="cm">/* End of heap check */</span>
+<span class="n">init_heap</span><span class="p">();</span>
+<span class="cm">/*
+</span><span class="cm">1. stack_end = esp - STACK_SIZE
+</span><span class="cm">2. 如果heap_end大于stack_end，令stack_end=heap_end 
+</span><span class="cm">*/</span>
+<span class="cm">/* Make sure we have all the proper CPU support */</span>
+<span class="cm">/*
+</span><span class="cm">查看当前CPU level，如果低于系统预设的最低CPU level,
+</span><span class="cm">则系统停止运行
+</span><span class="cm">*/</span>
+<span class="k">if</span> <span class="p">(</span><span class="n">validate_cpu</span><span class="p">())</span> <span class="p">{</span>
+        <span class="n">puts</span><span class="p">(</span><span class="s">&#34;Unable to boot - please use a kernel appropriate &#34;</span>
+                <span class="s">&#34;for your CPU.</span><span class="se">\n</span><span class="s">&#34;</span><span class="p">);</span>
+        <span class="n">die</span><span class="p">();</span>
+<span class="p">}</span>
+<span class="cm">/* Tell the BIOS what CPU mode we intend to run in. */</span>
+<span class="n">set_bios_mode</span><span class="p">();</span>
+
+<span class="cm">/* Detect memory layout */</span>
+<span class="cm">/*
+</span><span class="cm">循环执行调用号为0xe820的0x15中断调用，将每次的返回值
+</span><span class="cm">保存在e820entry数组中,每项的成员如下
+</span><span class="cm">* 内存段的起始地址
+</span><span class="cm">* 内存段的大小
+</span><span class="cm">* 内存段的类型（类型可以是reserved, usable等等)。
+</span><span class="cm">*/</span>
+<span class="n">detect_memory</span><span class="p">();</span>
+<span class="cm">/* Set keyboard repeat rate (why?) and query the lock flags */</span>
+<span class="cm">/*
+</span><span class="cm">1. 通过中断获得键盘状态
+</span><span class="cm">2. 设置键盘的按键检测频率
+</span><span class="cm">*/</span>
+<span class="n">keyboard_init</span><span class="p">();</span>
+      
+<span class="cm">/* Query Intel SpeedStep (IST) information */</span>
+<span class="n">query_ist</span><span class="p">();</span>
+
+<span class="cm">/* Query APM information */</span>
+<span class="cp">#if defined(CONFIG_APM) || defined(CONFIG_APM_MODULE)
+</span><span class="cp"></span>        <span class="n">query_apm_bios</span><span class="p">();</span>
+<span class="cp">#endif
+</span><span class="cp"></span>
+        <span class="cm">/* Query EDD information */</span>
+<span class="cp">#if defined(CONFIG_EDD) || defined(CONFIG_EDD_MODULE)
+</span><span class="cp"></span>        <span class="n">query_edd</span><span class="p">();</span>
+<span class="cp">#endif
+</span><span class="cp"></span>
+<span class="cm">/* Set the video mode */</span>
+<span class="cm">/*
+</span><span class="cm">设置屏幕,暂时用不到=。=
+</span><span class="cm">*/</span>
+<span class="n">set_video</span><span class="p">();</span>
+
+<span class="cm">/* Do the last things and invoke protected mode */</span>
+<span class="n">go_to_protected_mode</span><span class="p">();</span>
+</code></pre></td></tr></table>
+</div>
+</div></li>
+</ul>
+</li>
+</ol>
+<h1 id="内核切换至保护模式">内核切换至保护模式</h1>
+<ol>
+<li>
+<p>mian调用go_to_protected_mode()函数，由实模式切换至保护模式</p>
+<ul>
+<li>
+<p>realmode_switch_hook: 如果boot_params.hdr.realmode_swtch
+存在，则跳转执行boot_params.hdr.realmode_swtch(禁用NMI中断),
+否则直接禁用NMI中断(写数据需要时间，所以后面紧跟io_delay实现短暂延迟)</p>
+</li>
+<li>
+<p>enable_a20： 检测a20是否被激活，如果没有则尝试多种方法激活a20，
+激活失败，则系统停止运行</p>
+</li>
+<li>
+<p>set_idt(null_idt为空，使用lidt将null_idt加载入idt寄存器)</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-c" data-lang="c"><span class="k">static</span> <span class="kt">void</span> <span class="nf">setup_idt</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
+<span class="p">{</span>
+        <span class="k">static</span> <span class="k">const</span> <span class="k">struct</span> <span class="n">gdt_ptr</span> <span class="n">null_idt</span> <span class="o">=</span> <span class="p">{</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">};</span>
+        <span class="k">asm</span> <span class="k">volatile</span><span class="p">(</span><span class="s">&#34;lidtl %0&#34;</span> <span class="o">:</span> <span class="o">:</span> <span class="s">&#34;m&#34;</span> <span class="p">(</span><span class="n">null_idt</span><span class="p">));</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div></li>
+<li>
+<p>set_gdt</p>
+<ul>
+<li>使用boot_gdt[]数组存储gdt全局表，初始化CS，DS，TSS表项</li>
+</ul>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span><span class="lnt">8
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-c" data-lang="c"><span class="cm">/* CS: code, read/execute, 4 GB, base 0 */</span>
+<span class="p">[</span><span class="n">GDT_ENTRY_BOOT_CS</span><span class="p">]</span> <span class="o">=</span> <span class="n">GDT_ENTRY</span><span class="p">(</span><span class="mh">0xc09b</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mh">0xfffff</span><span class="p">),</span>
+<span class="cm">/* DS: data, read/write, 4 GB, base 0 */</span>
+<span class="p">[</span><span class="n">GDT_ENTRY_BOOT_DS</span><span class="p">]</span> <span class="o">=</span> <span class="n">GDT_ENTRY</span><span class="p">(</span><span class="mh">0xc093</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mh">0xfffff</span><span class="p">),</span>
+<span class="cm">/* TSS: 32-bit tss, 104 bytes, base 4096 */</span>
+<span class="cm">/* We only have a TSS here to keep Intel VT happy;
+</span><span class="cm">   we don&#39;t actually use it for anything. */</span>
+<span class="p">[</span><span class="n">GDT_ENTRY_BOOT_TSS</span><span class="p">]</span> <span class="o">=</span> <span class="n">GDT_ENTRY</span><span class="p">(</span><span class="mh">0x0089</span><span class="p">,</span> <span class="mi">4096</span><span class="p">,</span> <span class="mi">103</span><span class="p">),</span>
+</code></pre></td></tr></table>
+</div>
+</div><ul>
+<li>
+<p>使用static struct gdt_ptr gdt存储gdt全局表大小与地址</p>
+</li>
+<li>
+<p>使用lgdt将gdt_ptr加载如gdt寄存器</p>
+</li>
+</ul>
+</li>
+<li>
+<p>protected_mode_jump(boot_params.hdr.code32_start,(u32&amp;boot_params + (ds() &laquo; 4));</p>
+<ul>
+<li>
+<p>该函数使用gcc noreturn特性描述</p>
+</li>
+<li>
+<p>传递code32入口地址(0x100000)，与boot_params内容</p>
+</li>
+<li>
+<p>x86_linux内核引导协议规定使用bzImage时，保护模式的内核被重定位至0x100000</p>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>
+<p>保护模式总结</p>
+<ul>
+<li>
+<p>gdtr寄存器(48位)存储全局描述符表的基址(32位)与大小(16位)</p>
+</li>
+<li>
+<p>段寄存器存储段选择子(16位)，包含段描述符在段描述表中的索引，GDT/LDT标志位，RPL请求者优先级(与段描述符中的优先级协同工作)</p>
+</li>
+<li>
+<p>段描述符(64位)</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-fallback" data-lang="fallback">31          24        19      16              7            0
+------------------------------------------------------------
+|             | |B| |A|       | |   | |0|E|W|A|            |
+| BASE 31:24  |G|/|L|V| LIMIT |P|DPL|S|  TYPE | BASE 23:16 | 4
+|             | |D| |L| 19:16 | |   | |1|C|R|A|            |
+------------------------------------------------------------
+|                             |                            |
+|        BASE 15:0            |       LIMIT 15:0           | 0
+|                             |                            |
+------------------------------------------------------------
+</code></pre></td></tr></table>
+</div>
+</div><ul>
+<li>
+<p>Limit(20位)表示内存段长度</p>
+<ul>
+<li>
+<p>G = 0, 内存段的长度按照1 byte进行增长(Limit每增加1，段长度增加1 byte)，最大的内存段长度将是1M bytes；</p>
+</li>
+<li>
+<p>G = 1, 内存段的长度按照4K bytes进行增长(Limit每增加1，段长度增加4K bytes)，最大的内存段长度是4G bytes;</p>
+</li>
+</ul>
+</li>
+<li>
+<p>Base(32位)表示段基址</p>
+</li>
+<li>
+<p>40-47位定义内存段类型以及支持的操作</p>
+<ul>
+<li>
+<p>S标志(第44位)定义了段类型，S = 0说明这个内存段是一个系统段;S = 1说明这个内存段是一个代码段或者是数据段(堆栈段是一种特殊类型的数据段，堆栈段必须是可以进行读写的段)。</p>
+<ul>
+<li>
+<p>S = 1的情况下，第43位决定了内存段是数据段还是代码段。如果43位 = 0，说明是一个数据段，否则就是一个代码段。</p>
+</li>
+<li>
+<p>数据段，第42，41，40位表示的是(E扩展，W可写，A可访问)</p>
+</li>
+<li>
+<p>代码段，第42，41，40位表示的是(C一致，R可读，A可访问）</p>
+</li>
+</ul>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-fallback" data-lang="fallback">                |           Type Field        | Descriptor Type | Description
+|-----------------------------|-----------------|------------------
+| Decimal                     |                 |
+|             0    E    W   A |                 |
+| 0           0    0    0   0 | Data            | Read-Only
+| 1           0    0    0   1 | Data            | Read-Only, accessed
+| 2           0    0    1   0 | Data            | Read/Write
+| 3           0    0    1   1 | Data            | Read/Write, accessed
+| 4           0    1    0   0 | Data            | Read-Only, expand-down
+| 5           0    1    0   1 | Data            | Read-Only, expand-down, accessed
+| 6           0    1    1   0 | Data            | Read/Write, expand-down
+| 7           0    1    1   1 | Data            | Read/Write, expand-down, accessed
+|                  C    R   A |                 |
+| 8           1    0    0   0 | Code            | Execute-Only
+| 9           1    0    0   1 | Code            | Execute-Only, accessed
+| 10          1    0    1   0 | Code            | Execute/Read
+| 11          1    0    1   1 | Code            | Execute/Read, accessed
+| 12          1    1    0   0 | Code            | Execute-Only, conforming
+| 14          1    1    0   1 | Code            | Execute-Only, conforming, accessed
+| 13          1    1    1   0 | Code            | Execute/Read, conforming
+| 15          1    1    1   1 | Code            | Execute/Read, conforming, accessed
+</code></pre></td></tr></table>
+</div>
+</div></li>
+</ul>
+</li>
+<li>
+<p>P 标志(bit 47) 说明该内存段是否已经存在于内存中。如果P = 0，那么在访问这个内存段的时候将报错。</p>
+</li>
+<li>
+<p>AVL 标志(bit 52) 在Linux内核中没有被使用。</p>
+</li>
+<li>
+<p>L 标志(bit 53) 只对代码段有意义，如果L = 1，说明该代码段需要运行在64位模式下。</p>
+</li>
+<li>
+<p>D/B flag(bit 54) 根据段描述符描述的是一个可执行代码段、下扩数据段还是一个堆栈段，这个标志具有不同的功能。（对于32位代码和数据段，这个标志应该总是设置为1；对于16位代码和数据段，这个标志被设置为0。）。</p>
+<ul>
+<li>
+<p>可执行代码段。此时这个标志称为D标志并用于指出该段中的指令引用有效地址和操作数的默认长度。如果该标志置位，则默认值是32位地址和32位或8位的操作数；如果该标志为0，则默认值是16位地址和16位或8位的操作数。指令前缀0x66可以用来选择非默认值的操作数大小；前缀0x67可用来选择非默认值的地址大小。</p>
+</li>
+<li>
+<p>栈段（由SS寄存器指向的数据段）。此时该标志称为B（Big）标志，用于指明隐含堆栈操作（如PUSH、POP或CALL）时的栈指针大小。如果该标志置位，则使用32位栈指针并存放在ESP寄存器中；如果该标志为0，则使用16位栈指针并存放在SP寄存器中。如果堆栈段被设置成一个下扩数据段，这个B标志也同时指定了堆栈段的上界限。</p>
+</li>
+<li>
+<p>下扩数据段。此时该标志称为B标志，用于指明堆栈段的上界限。如果设置了该标志，则堆栈段的上界限是0xFFFFFFFF（4GB）；如果没有设置该标志，则堆栈段的上界限是0xFFFF（64KB）。</p>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+<h1 id="内核切换至长模式">内核切换至长模式</h1>
+<ol>
+<li>
+<p>x86_64架构下code32_start(内核启动时在0x100000处加载，但是如果内核崩溃，需要重新加载内核时，此处会进行重定位) 在head_64.S(使用-fPIC编译，用于适配内核加载地址重定位)中定义</p>
+</li>
+<li>
+<p>head_64.S</p>
+<ul>
+<li>
+<p>head_64.S(starup_32) 解析</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">  1
+</span><span class="lnt">  2
+</span><span class="lnt">  3
+</span><span class="lnt">  4
+</span><span class="lnt">  5
+</span><span class="lnt">  6
+</span><span class="lnt">  7
+</span><span class="lnt">  8
+</span><span class="lnt">  9
+</span><span class="lnt"> 10
+</span><span class="lnt"> 11
+</span><span class="lnt"> 12
+</span><span class="lnt"> 13
+</span><span class="lnt"> 14
+</span><span class="lnt"> 15
+</span><span class="lnt"> 16
+</span><span class="lnt"> 17
+</span><span class="lnt"> 18
+</span><span class="lnt"> 19
+</span><span class="lnt"> 20
+</span><span class="lnt"> 21
+</span><span class="lnt"> 22
+</span><span class="lnt"> 23
+</span><span class="lnt"> 24
+</span><span class="lnt"> 25
+</span><span class="lnt"> 26
+</span><span class="lnt"> 27
+</span><span class="lnt"> 28
+</span><span class="lnt"> 29
+</span><span class="lnt"> 30
+</span><span class="lnt"> 31
+</span><span class="lnt"> 32
+</span><span class="lnt"> 33
+</span><span class="lnt"> 34
+</span><span class="lnt"> 35
+</span><span class="lnt"> 36
+</span><span class="lnt"> 37
+</span><span class="lnt"> 38
+</span><span class="lnt"> 39
+</span><span class="lnt"> 40
+</span><span class="lnt"> 41
+</span><span class="lnt"> 42
+</span><span class="lnt"> 43
+</span><span class="lnt"> 44
+</span><span class="lnt"> 45
+</span><span class="lnt"> 46
+</span><span class="lnt"> 47
+</span><span class="lnt"> 48
+</span><span class="lnt"> 49
+</span><span class="lnt"> 50
+</span><span class="lnt"> 51
+</span><span class="lnt"> 52
+</span><span class="lnt"> 53
+</span><span class="lnt"> 54
+</span><span class="lnt"> 55
+</span><span class="lnt"> 56
+</span><span class="lnt"> 57
+</span><span class="lnt"> 58
+</span><span class="lnt"> 59
+</span><span class="lnt"> 60
+</span><span class="lnt"> 61
+</span><span class="lnt"> 62
+</span><span class="lnt"> 63
+</span><span class="lnt"> 64
+</span><span class="lnt"> 65
+</span><span class="lnt"> 66
+</span><span class="lnt"> 67
+</span><span class="lnt"> 68
+</span><span class="lnt"> 69
+</span><span class="lnt"> 70
+</span><span class="lnt"> 71
+</span><span class="lnt"> 72
+</span><span class="lnt"> 73
+</span><span class="lnt"> 74
+</span><span class="lnt"> 75
+</span><span class="lnt"> 76
+</span><span class="lnt"> 77
+</span><span class="lnt"> 78
+</span><span class="lnt"> 79
+</span><span class="lnt"> 80
+</span><span class="lnt"> 81
+</span><span class="lnt"> 82
+</span><span class="lnt"> 83
+</span><span class="lnt"> 84
+</span><span class="lnt"> 85
+</span><span class="lnt"> 86
+</span><span class="lnt"> 87
+</span><span class="lnt"> 88
+</span><span class="lnt"> 89
+</span><span class="lnt"> 90
+</span><span class="lnt"> 91
+</span><span class="lnt"> 92
+</span><span class="lnt"> 93
+</span><span class="lnt"> 94
+</span><span class="lnt"> 95
+</span><span class="lnt"> 96
+</span><span class="lnt"> 97
+</span><span class="lnt"> 98
+</span><span class="lnt"> 99
+</span><span class="lnt">100
+</span><span class="lnt">101
+</span><span class="lnt">102
+</span><span class="lnt">103
+</span><span class="lnt">104
+</span><span class="lnt">105
+</span><span class="lnt">106
+</span><span class="lnt">107
+</span><span class="lnt">108
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-S" data-lang="S">        <span class="n">__HEAD</span>  <span class="o">//</span>宏定义，声名代码段<span class="p">(</span><span class="c1">#define __HEAD  .section  &#34;.head.text&#34;,&#34;ax&#34;)</span>
+        <span class="n">.code32</span>
+<span class="nf">SYM_FUNC_START</span><span class="p">(</span><span class="n">startup_32</span><span class="p">)</span>
+        <span class="n">cld</span> 
+        <span class="o">/*</span>
+        <span class="o">*</span> <span class="n">Test</span> <span class="n">KEEP_SEGMENTS</span> <span class="n">flag</span> <span class="n">to</span> <span class="n">see</span> <span class="n">if</span> <span class="n">the</span> <span class="n">bootloader</span> <span class="n">is</span> <span class="n">asking</span>
+        <span class="o">*</span> <span class="n">us</span> <span class="n">to</span> <span class="n">not</span> <span class="n">reload</span> <span class="n">segments</span>
+        <span class="o">*/</span>
+        <span class="o">/*</span>
+        判断<span class="n">loadflags是否设置KEEP_SEGMENTS标志位</span>
+        <span class="o">*/</span>
+        <span class="n">testb</span> <span class="o">$</span><span class="n">KEEP_SEGMENTS</span><span class="p">,</span> <span class="nf">BP_loadflags</span><span class="p">(</span><span class="o">%esi)  
+</span><span class="o">        jnz 1f
+</span><span class="o">        /*
+</span><span class="o">        如果没有设置KEEP_SEGMENTS标志位，则使用DS段描述符初始化数据段寄存器
+</span><span class="o">        */
+</span><span class="o">        cli
+</span><span class="o">        movl	$(__BOOT_DS), %</span><span class="n">eax</span>
+        <span class="n">movl</span>	<span class="o">%eax, %</span><span class="n">ds</span>
+        <span class="n">movl</span>	<span class="o">%eax, %</span><span class="n">es</span>
+        <span class="n">movl</span>	<span class="o">%eax, %</span><span class="n">ss</span>
+<span class="m">1</span><span class="o">:</span>
+
+<span class="o">/*</span>
+<span class="o">*</span> <span class="n">Calculate</span> <span class="n">the</span> <span class="n">delta</span> <span class="n">between</span> <span class="n">where</span> <span class="n">we</span> <span class="n">were</span> <span class="n">compiled</span> <span class="n">to</span> <span class="n">run</span>
+<span class="o">*</span> <span class="n">at</span> <span class="n">and</span> <span class="n">where</span> <span class="n">we</span> <span class="n">were</span> <span class="n">actually</span> <span class="n">loaded</span> <span class="n">at.</span>  <span class="n">This</span> <span class="n">can</span> <span class="n">only</span> <span class="n">be</span> <span class="n">done</span>
+<span class="o">*</span> <span class="n">with</span> <span class="n">a</span> <span class="n">short</span> <span class="n">local</span> <span class="n">call</span> <span class="n">on</span> <span class="n">x86.</span>  <span class="n">Nothing</span>  <span class="n">else</span> <span class="n">will</span> <span class="n">tell</span> <span class="n">us</span> <span class="n">what</span>
+<span class="o">*</span> <span class="n">address</span> <span class="n">we</span> <span class="n">are</span> <span class="n">running</span> <span class="n">at.</span>  <span class="n">The</span> <span class="n">reserved</span> <span class="n">chunk</span> <span class="n">of</span> <span class="n">the</span> <span class="n">real</span><span class="o">-</span><span class="n">mode</span>
+<span class="o">*</span> <span class="n">data</span> <span class="n">at</span> <span class="mh">0x1e4</span> <span class="p">(</span><span class="n">defined</span> <span class="n">as</span> <span class="n">a</span> <span class="n">scratch</span> <span class="n">field</span><span class="p">)</span> <span class="n">are</span> <span class="n">used</span> <span class="n">as</span> <span class="n">the</span> <span class="n">stack</span>
+<span class="o">*</span> <span class="n">for</span> <span class="n">this</span> <span class="n">calculation.</span> <span class="n">Only</span> <span class="m">4</span> <span class="n">bytes</span> <span class="n">are</span> <span class="n">needed.</span>
+<span class="o">*/</span>
+<span class="o">/*</span>
+使用<span class="n">bootparams结构中的scratch作为临时栈顶</span>，<span class="n">call</span> <span class="m">1</span><span class="n">f</span><span class="p">,</span> <span class="n">popl</span> <span class="o">%ebp(将当前物
+</span><span class="o">理位置置于ebp),通过subl $1b, %</span><span class="n">ebp</span> 定位<span class="n">startup_32真实地址</span>
+<span class="o">*/</span>
+        <span class="nf">leal	</span><span class="p">(</span><span class="n">BP_scratch</span><span class="m">+4</span><span class="p">)(</span><span class="o">%esi), %</span><span class="n">esp</span>
+        <span class="n">call</span>	<span class="m">1</span><span class="n">f</span>
+<span class="m">1</span><span class="o">:</span>	<span class="n">popl</span>	<span class="o">%ebp
+</span><span class="o">        subl	$1b, %</span><span class="n">ebp</span>
+
+<span class="o">/*</span> <span class="n">setup</span> <span class="n">a</span> <span class="n">stack</span> <span class="n">and</span> <span class="n">make</span> <span class="n">sure</span> <span class="n">cpu</span> <span class="n">supports</span> <span class="n">long</span> <span class="n">mode.</span> <span class="o">*/</span>
+<span class="o">/*</span> <span class="n">startup_32基地址结合boot_stack_end</span> 重新设置栈顶
+        <span class="n">movl</span>	<span class="o">$</span><span class="n">boot_stack_end</span><span class="p">,</span> <span class="o">%eax
+</span><span class="o">        addl	%</span><span class="n">ebp</span><span class="p">,</span> <span class="o">%eax
+</span><span class="o">        movl	%</span><span class="n">eax</span><span class="p">,</span> <span class="o">%esp
+</span><span class="o">/*
+</span><span class="o">调用verify_cpu 判断CPU 是否支持长模式和SSE，如果不支持则不再向长模式跳转
+</span><span class="o">*/
+</span><span class="o">        call	verify_cpu
+</span><span class="o">        testl	%</span><span class="n">eax</span><span class="p">,</span> <span class="o">%eax
+</span><span class="o">        jnz	.Lno_longmode
+</span><span class="o">/*
+</span><span class="o">* Compute the delta between where we were compiled to run at
+</span><span class="o">* and where the code will actually run at.
+</span><span class="o">*
+</span><span class="o">* %</span><span class="n">ebp</span> <span class="n">contains</span> <span class="n">the</span> <span class="n">address</span> <span class="n">we</span> <span class="n">are</span> <span class="n">loaded</span> <span class="n">at</span> <span class="n">by</span> <span class="n">the</span> <span class="n">boot</span> <span class="n">loader</span> <span class="n">and</span> <span class="o">%ebx
+</span><span class="o">* contains the address where we should move the kernel image temporarily
+</span><span class="o">* for safe in-place decompression.
+</span><span class="o">*/
+</span><span class="o">
+</span><span class="o">#ifdef CONFIG_RELOCATABLE
+</span><span class="o">        movl	%</span><span class="n">ebp</span><span class="p">,</span> <span class="o">%ebx
+</span><span class="o">        movl	BP_kernel_alignment(%</span><span class="n">esi</span><span class="p">),</span> <span class="o">%eax
+</span><span class="o">        decl	%</span><span class="n">eax</span>
+        <span class="n">addl</span>	<span class="o">%eax, %</span><span class="n">ebx</span>
+        <span class="n">notl</span>	<span class="o">%eax
+</span><span class="o">        andl	%</span><span class="n">eax</span><span class="p">,</span> <span class="o">%ebx
+</span><span class="o">        cmpl	$LOAD_PHYSICAL_ADDR, %</span><span class="n">ebx</span>
+        <span class="n">jae</span>	<span class="m">1</span><span class="n">f</span>
+<span class="c1">#endif</span>
+        <span class="n">movl</span>	<span class="o">$</span><span class="n">LOAD_PHYSICAL_ADDR</span><span class="p">,</span> <span class="o">%ebx
+</span><span class="o">1:
+</span><span class="o">
+</span><span class="o">        /* Target address to relocate to for decompression */
+</span><span class="o">        movl	BP_init_size(%</span><span class="n">esi</span><span class="p">),</span> <span class="o">%eax
+</span><span class="o">        subl	$_end, %</span><span class="n">eax</span>
+        <span class="n">addl</span>	<span class="o">%eax, %</span><span class="n">ebx</span>
+
+<span class="o">/*</span>
+<span class="o">*</span> <span class="n">Prepare</span> <span class="n">for</span> <span class="n">entering</span> <span class="m">64</span> <span class="n">bit</span> <span class="n">mode</span>
+<span class="o">*/</span>
+
+        <span class="o">/*</span> <span class="n">Load</span> <span class="n">new</span> <span class="n">GDT</span> <span class="n">with</span> <span class="n">the</span> <span class="m">64</span><span class="n">bit</span> <span class="n">segments</span> <span class="n">using</span> <span class="m">32</span><span class="n">bit</span> <span class="n">descriptor</span> <span class="o">*/</span>
+        <span class="o">/*</span> 
+        重新加载全局描述表，<span class="m">64</span>位代码段描述项添加 <span class="nf">CS.L</span><span class="p">(</span>长模式标志为<span class="p">)</span> <span class="o">=</span> <span class="m">1</span> <span class="n">CS.D</span> <span class="o">=</span> <span class="m">0</span>
+        <span class="nf">SYM_DATA_START_LOCAL</span><span class="p">(</span><span class="n">gdt</span><span class="p">)</span>
+                <span class="n">.word</span>	<span class="n">gdt_end</span> <span class="o">-</span> <span class="n">gdt</span>
+                <span class="n">.long</span>	<span class="n">gdt</span>
+                <span class="n">.word</span>	<span class="m">0</span>
+                <span class="n">.quad</span>	<span class="mh">0x00cf9a000000ffff</span>	<span class="o">/*</span> <span class="n">__KERNEL32_CS</span> <span class="o">*/</span>
+                <span class="n">.quad</span>	<span class="mh">0x00af9a000000ffff</span>	<span class="o">/*</span> <span class="n">__KERNEL_CS</span> <span class="o">*/</span>
+                <span class="n">.quad</span>	<span class="mh">0x00cf92000000ffff</span>	<span class="o">/*</span> <span class="n">__KERNEL_DS</span> <span class="o">*/</span>
+                <span class="n">.quad</span>	<span class="mh">0x0080890000000000</span>	<span class="o">/*</span> <span class="n">TS</span> <span class="n">descriptor</span> <span class="o">*/</span>
+                <span class="n">.quad</span>   <span class="mh">0x0000000000000000</span>	<span class="o">/*</span> <span class="n">TS</span> <span class="n">continued</span> <span class="o">*/</span>
+        <span class="nf">SYM_DATA_END_LABEL</span><span class="p">(</span><span class="n">gdt</span><span class="p">,</span> <span class="n">SYM_L_LOCAL</span><span class="p">,</span> <span class="n">gdt_end</span><span class="p">)</span>
+        <span class="o">*/</span>
+              
+        <span class="n">addl</span>	<span class="o">%ebp, gdt+2(%</span><span class="n">ebp</span><span class="p">)</span>
+        <span class="n">lgdt</span>	<span class="nf">gdt</span><span class="p">(</span><span class="o">%ebp)
+</span><span class="o">
+</span><span class="o">        /* Enable PAE mode */
+</span><span class="o">        /* cr4寄存器第5位置1,开启PAE模式
+</span><span class="o">        movl	%</span><span class="n">cr4</span><span class="p">,</span> <span class="o">%eax
+</span><span class="o">        orl	$X86_CR4_PAE, %</span><span class="n">eax</span>
+        <span class="n">movl</span>	<span class="o">%eax, %</span><span class="n">cr4</span>
+
+        <span class="nf">... </span><span class="p">(</span>创建页表<span class="p">)</span> <span class="kc">...</span>
+
+</code></pre></td></tr></table>
+</div>
+</div></li>
+<li>
+<p>页表(IA-32e 分页模式)</p>
+<ol>
+<li>
+<p>cr3寄存器</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-fallback" data-lang="fallback">63                  52 51                                                       32
+--------------------------------------------------------------------------------
+|                     |                                                          |
+|    Reserved MBZ     |            Address of the top level structure            |
+|                     |                                                          |
+--------------------------------------------------------------------------------
+31                                  12 11            5     4     3 2             0
+--------------------------------------------------------------------------------
+|                                     |               |  P  |  P  |              |
+|  Address of the top level structure |   Reserved    |  C  |  W  |    Reserved  |
+|                                     |               |  D  |  T  |              |
+--------------------------------------------------------------------------------
+</code></pre></td></tr></table>
+</div>
+</div><ul>
+<li>
+<p>Bits 63:52 - reserved must be 0.</p>
+</li>
+<li>
+<p>Bits 51:12 - stores the address of the top level paging structure;</p>
+</li>
+<li>
+<p>Bits 11:5 - reserved must be 0;</p>
+</li>
+<li>
+<p>Bits 4:3 - PWT or Page-Level Writethrough and PCD or Page-level cache disable indicate. These bits control the way the page or Page Table is handled by the hardware cache;</p>
+</li>
+<li>
+<p>Bits 2:0 - ignored;</p>
+</li>
+</ul>
+</li>
+<li>
+<p>页表项</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-fallback" data-lang="fallback">63  62                  52 51                                                  32
+--------------------------------------------------------------------------------
+| N |                     |                                                     |
+|   |     Available       |     Address of the paging structure on lower level  |
+| X |                     |                                                     |
+--------------------------------------------------------------------------------
+31                                              12 11  9 8 7 6 5   4   3 2 1     0
+--------------------------------------------------------------------------------
+|                                                |     | M |I| | P | P |U|W|    |
+| Address of the paging structure on lower level | AVL | B |G|A| C | W | | |  P |
+|                                                |     | Z |N| | D | T |S|R|    |
+--------------------------------------------------------------------------------
+</code></pre></td></tr></table>
+</div>
+</div><ul>
+<li>
+<p>Bits 63 - N/X位(不可执行位)表示被这个页表项映射的所有物理页执行代码的能力；</p>
+</li>
+<li>
+<p>Bits 62：52 - CPU忽略，被系统软件使用；</p>
+</li>
+<li>
+<p>Bits 51：12 - 存储低级分页结构的物理地址；</p>
+</li>
+<li>
+<p>Bits 11：9 - 被 CPU 忽略；</p>
+</li>
+<li>
+<p>MBZ - 必须为 0；</p>
+</li>
+<li>
+<p>忽略位；</p>
+</li>
+<li>
+<p>A - 访问标志位暗示物理页或者页结构被访问；</p>
+</li>
+<li>
+<p>PWT 和 PCD 用于缓存；</p>
+</li>
+<li>
+<p>U/S - 普通用户/超级管理员访问标志位 控制被这个页表项映射的所有物理页的访问权限；</p>
+</li>
+<li>
+<p>R/W - 读写位 控制被这个页表项映射的所有物理页的读写权限;</p>
+</li>
+<li>
+<p>P - 存在位 表示页表或物理页是否被加载进内存；</p>
+</li>
+</ul>
+</li>
+<li>
+<p>线性地址转换为物理地址</p>
+<ul>
+<li>
+<p>64位线性地址只有低48位有意义</p>
+</li>
+<li>
+<p>cr3寄存器存储4级页表地址</p>
+</li>
+<li>
+<p>线性地址中的第39位到第47位存储4级页表项索引，第30位到第38位存储3级页表项索引，第29位到第21位存储2级页表项索引，第12位到第20位存储1级页表项索引，第0位到第11位提供物理页的字节偏移；</p>
+</li>
+</ul>
+</li>
+</ol>
+</li>
+<li>
+<p>继续解析 head_64.S(starup_32)</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span><span class="lnt">39
+</span><span class="lnt">40
+</span><span class="lnt">41
+</span><span class="lnt">42
+</span><span class="lnt">43
+</span><span class="lnt">44
+</span><span class="lnt">45
+</span><span class="lnt">46
+</span><span class="lnt">47
+</span><span class="lnt">48
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-S" data-lang="S">        <span class="o">/*</span> <span class="n">Enable</span> <span class="n">Long</span> <span class="n">mode</span> <span class="n">in</span> <span class="nf">EFER </span><span class="p">(</span><span class="n">Extended</span> <span class="n">Feature</span> <span class="n">Enable</span> <span class="n">Register</span><span class="p">)</span> <span class="o">*/</span>
+        <span class="o">/*</span> 
+        启用拓展寄存器
+        <span class="o">*/</span>
+        <span class="n">movl</span>	<span class="o">$</span><span class="n">MSR_EFER</span><span class="p">,</span> <span class="o">%ecx
+</span><span class="o">        rdmsr
+</span><span class="o">        btsl	$_EFER_LME, %</span><span class="n">eax</span>
+        <span class="n">wrmsr</span>
+              
+        <span class="o">/*</span> <span class="n">After</span> <span class="n">gdt</span> <span class="n">is</span> <span class="n">loaded</span> <span class="o">*/</span>
+        <span class="o">/*</span>
+        初始化<span class="n">LDT寄存器</span>
+        <span class="o">*/</span>
+        <span class="n">xorl</span>	<span class="o">%eax, %</span><span class="n">eax</span>
+        <span class="n">lldt</span>	<span class="o">%ax
+</span><span class="o">        movl    $__BOOT_TSS, %</span><span class="n">eax</span>
+        <span class="n">ltr</span>	<span class="o">%ax
+</span><span class="o">
+</span><span class="o">        /*
+</span><span class="o">        * Setup for the jump to 64bit mode
+</span><span class="o">        *
+</span><span class="o">        * When the jump is performend we will be in long mode but
+</span><span class="o">        * in 32bit compatibility mode with EFER.LME = 1, CS.L = 0, CS.D = 1
+</span><span class="o">        * (and in turn EFER.LMA = 1).	To jump into 64bit mode we use
+</span><span class="o">        * the new gdt/idt that has __KERNEL_CS with CS.L = 1.
+</span><span class="o">        * We place all of the values on our mini stack so lret can
+</span><span class="o">        * used to perform that far jump.
+</span><span class="o">        */
+</span><span class="o">        pushl	$__KERNEL_CS
+</span><span class="o">        leal	startup_64(%</span><span class="n">ebp</span><span class="p">),</span> <span class="o">%eax
+</span><span class="o">        pushl	%</span><span class="n">eax</span>
+
+        <span class="o">/*</span> <span class="n">Enter</span> <span class="n">paged</span> <span class="n">protected</span> <span class="n">Mode</span><span class="p">,</span> <span class="n">activating</span> <span class="n">Long</span> <span class="n">Mode</span> <span class="o">*/</span>
+        <span class="o">/*</span>
+        启用分页机制
+        <span class="o">*/</span>
+        <span class="n">movl</span>	<span class="o">$</span><span class="p">(</span><span class="n">X86_CR0_PG</span> <span class="o">|</span> <span class="n">X86_CR0_PE</span><span class="p">),</span> <span class="o">%eax /* Enable Paging and Protected mode */
+</span><span class="o">        movl	%</span><span class="n">eax</span><span class="p">,</span> %<span class="n">cr0</span>
+
+        <span class="o">/*</span> <span class="n">Jump</span> <span class="n">from</span> <span class="m">32</span><span class="n">bit</span> <span class="n">compatibility</span> <span class="n">mode</span> <span class="n">into</span> <span class="m">64</span><span class="n">bit</span> <span class="n">mode.</span> <span class="o">*/</span>
+        <span class="o">/*</span>
+        <span class="nf">cs段选择子</span><span class="p">(</span>指向<span class="n">cs_kernel_64段描述符</span><span class="p">)</span>，<span class="nf">rip</span><span class="p">(</span><span class="n">startup_64物理地址</span><span class="p">)</span>，已经压入栈中
+        <span class="o">*/</span>
+        <span class="n">lret</span>
+        <span class="o">/*</span>
+        跳转进入<span class="n">startup_64</span>
+        <span class="o">*/</span>
+<span class="nf">SYM_FUNC_END</span><span class="p">(</span><span class="n">startup_32</span><span class="p">)</span>
+</code></pre></td></tr></table>
+</div>
+</div></li>
+</ul>
+</li>
+</ol>
+<h1 id="长模式下内核解压缩">长模式下内核解压缩</h1>
+<ol>
+<li>
+<p>进入64位长模式后，将数据段寄存器设置为空描述符，以实现寻址平坦化(长模式下段寄存器，段描述符显得有些鸡肋，只保留部分功能)</p>
+</li>
+<li>
+<p>如果设置了内核重定位，则首先通过rip相对寻址获得当前代码段加载的基地址，2MB字节对齐后，与LOAD_PHYSICAL_ADDR比较，如果不同，则使用该基地址替换LOAD_PHYSICAL_ADDR(这种操作在startup32中实现过，但是在这里又实现一遍是因为64位引导可以直接跳到startup_64而忽略startup_32)，紧接着将rbx设置为用以解压内核的代码的地址</p>
+</li>
+<li>
+<p>按照64位引导协议，重置rsp(以rbx为基地址)，flag寄存器，GDT</p>
+</li>
+<li>
+<p>将压缩内核(位于当前代码与解压缩代码之间)复制到栈上(rbx为基地址)后，跳转到rbx处(用于解压内核的代码段)</p>
+</li>
+<li>
+<p>因为接下来会执行c语言程序，所以提前清空bss段</p>
+</li>
+<li>
+<p>调用extract_kernel函数</p>
+<ul>
+<li>
+<p>初始化video/console(程序不知道系统引导类型，所以再次初始化)</p>
+</li>
+<li>
+<p>初始化堆，堆长度为0x10000</p>
+</li>
+<li>
+<p>调用choose_random_location(用来适配KASLR安全机制)选择可以用来写入已解压内核的物理空间</p>
+</li>
+<li>
+<p>原地解压内核</p>
+</li>
+<li>
+<p>parse_elf函数将内核可加载段加载入choose_random_location的返回地址</p>
+</li>
+<li>
+<p>handle_relocations函数完成到64位内核代码段的跳转</p>
+</li>
+</ul>
+</li>
+</ol>
+<h1 id="至此x86_64架构下64位linux内核成功运行">至此，x86_64架构下64位linux内核成功运行</h1>
+</div><div class="post-footer" id="post-footer">
+    <div class="post-info">
+        <div class="post-info-line">
+            <div class="post-info-mod">
+                <span>Updated on 2020-06-06</span>
+            </div>
+            <div class="post-info-license"></div>
+        </div>
+        <div class="post-info-line">
+            <div class="post-info-md"><span>
+                            <a class="link-to-markdown" href="/kernel_boot/index.md" target="_blank">Read Markdown</a>
+                        </span></div>
+            <div class="post-info-share">
+                <span><a href="javascript:void(0);" title="Share on Twitter" data-sharer="twitter" data-url="https://povcfe.github.io/kernel_boot/" data-title="linux内核(5.4.81)---内核引导" data-via="xxxx" data-hashtags="linux kernel,源码分析,boot"><i class="fab fa-twitter fa-fw"></i></a><a href="javascript:void(0);" title="Share on Facebook" data-sharer="facebook" data-url="https://povcfe.github.io/kernel_boot/" data-hashtag="linux kernel"><i class="fab fa-facebook-square fa-fw"></i></a><a href="javascript:void(0);" title="Share on Hacker News" data-sharer="hackernews" data-url="https://povcfe.github.io/kernel_boot/" data-title="linux内核(5.4.81)---内核引导"><i class="fab fa-hacker-news fa-fw"></i></a><a href="javascript:void(0);" title="Share on Line" data-sharer="line" data-url="https://povcfe.github.io/kernel_boot/" data-title="linux内核(5.4.81)---内核引导"><i data-svg-src="https://cdn.jsdelivr.net/npm/simple-icons@2.14.0/icons/line.svg"></i></a><a href="javascript:void(0);" title="Share on 微博" data-sharer="weibo" data-url="https://povcfe.github.io/kernel_boot/" data-title="linux内核(5.4.81)---内核引导"><i class="fab fa-weibo fa-fw"></i></a></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="post-info-more">
+        <section class="post-tags"><i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/linux-kernel/">linux kernel</a>,&nbsp;<a href="/tags/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/">源码分析</a>,&nbsp;<a href="/tags/boot/">boot</a></section>
+        <section>
+            <span><a href="javascript:void(0);" onclick="window.history.back();">Back</a></span>&nbsp;|&nbsp;<span><a href="/">Home</a></span>
+        </section>
+    </div>
+
+    <div class="post-nav"><a href="/kernel_rw4/" class="prev" rel="prev" title="linux 内核提权总结(demo&#43;exp分析) -- 任意读写(四)"><i class="fas fa-angle-left fa-fw"></i>linux 内核提权总结(demo&#43;exp分析) -- 任意读写(四)</a>
+            <a href="/kernel_mm/" class="next" rel="next" title="linux内核(5.4.81)---内存管理模块源码分析">linux内核(5.4.81)---内存管理模块源码分析<i class="fas fa-angle-right fa-fw"></i></a></div>
+</div>
+<div id="comments"><div id="valine" class="comment"></div><noscript>
+                Please enable JavaScript to view the comments powered by <a href="https://valine.js.org/">Valine</a>.
+            </noscript></div></article></div>
+            </main><footer class="footer">
+        <div class="footer-container"><div class="footer-line">Powered by <a href="https://gohugo.io/" target="_blank" rel="noopener noreffer" title="Hugo 0.80.0">Hugo</a> | Theme - <a href="https://github.com/dillonzq/LoveIt" target="_blank" rel="noopener noreffer" title="LoveIt 0.2.10"><i class="far fa-kiss-wink-heart fa-fw"></i> LoveIt</a>
+                </div><div class="footer-line"><i class="far fa-copyright fa-fw"></i><span itemprop="copyrightYear">2019 - 2022</span><span class="author" itemprop="copyrightHolder">&nbsp;<a href="/" target="_blank">xxxx</a></span>&nbsp;|&nbsp;<span class="license"><a rel="license external nofollow noopener noreffer" href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">CC BY-NC 4.0</a></span></div>
+        </div>
+    </footer></div>
+
+        <div id="fixed-buttons"><a href="#" id="back-to-top" class="fixed-button" title="Back to Top">
+                <i class="fas fa-arrow-up fa-fw"></i>
+            </a><a href="#" id="view-comments" class="fixed-button" title="View Comments">
+                <i class="fas fa-comment fa-fw"></i>
+            </a>
+        </div><link rel="stylesheet" href="/lib/valine/valine.min.css"><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/valine@1.4.14/dist/Valine.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/autocomplete.js@0.37.1/dist/autocomplete.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/algoliasearch@4.2.0/dist/algoliasearch-lite.umd.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lazysizes@5.2.2/lazysizes.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@2.0.6/dist/clipboard.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sharer.js@0.4.0/sharer.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"Copy to clipboard","maxShownLines":10},"comment":{"valine":{"appId":"QGzwQXOqs5JOhN4RGPOkR2mR-MdYXbMMI","appKey":"WBmoGyJtbqUswvfLh6L8iEBr","avatar":"mp","el":"#valine","emojiCDN":"https://cdn.jsdelivr.net/npm/emoji-datasource-google@5.0.1/img/google/64/","emojiMaps":{"100":"1f4af.png","alien":"1f47d.png","anger":"1f4a2.png","angry":"1f620.png","anguished":"1f627.png","astonished":"1f632.png","black_heart":"1f5a4.png","blue_heart":"1f499.png","blush":"1f60a.png","bomb":"1f4a3.png","boom":"1f4a5.png","broken_heart":"1f494.png","brown_heart":"1f90e.png","clown_face":"1f921.png","cold_face":"1f976.png","cold_sweat":"1f630.png","confounded":"1f616.png","confused":"1f615.png","cry":"1f622.png","crying_cat_face":"1f63f.png","cupid":"1f498.png","dash":"1f4a8.png","disappointed":"1f61e.png","disappointed_relieved":"1f625.png","dizzy":"1f4ab.png","dizzy_face":"1f635.png","drooling_face":"1f924.png","exploding_head":"1f92f.png","expressionless":"1f611.png","face_vomiting":"1f92e.png","face_with_cowboy_hat":"1f920.png","face_with_hand_over_mouth":"1f92d.png","face_with_head_bandage":"1f915.png","face_with_monocle":"1f9d0.png","face_with_raised_eyebrow":"1f928.png","face_with_rolling_eyes":"1f644.png","face_with_symbols_on_mouth":"1f92c.png","face_with_thermometer":"1f912.png","fearful":"1f628.png","flushed":"1f633.png","frowning":"1f626.png","ghost":"1f47b.png","gift_heart":"1f49d.png","green_heart":"1f49a.png","grimacing":"1f62c.png","grin":"1f601.png","grinning":"1f600.png","hankey":"1f4a9.png","hear_no_evil":"1f649.png","heart":"2764-fe0f.png","heart_decoration":"1f49f.png","heart_eyes":"1f60d.png","heart_eyes_cat":"1f63b.png","heartbeat":"1f493.png","heartpulse":"1f497.png","heavy_heart_exclamation_mark_ornament":"2763-fe0f.png","hole":"1f573-fe0f.png","hot_face":"1f975.png","hugging_face":"1f917.png","hushed":"1f62f.png","imp":"1f47f.png","innocent":"1f607.png","japanese_goblin":"1f47a.png","japanese_ogre":"1f479.png","joy":"1f602.png","joy_cat":"1f639.png","kiss":"1f48b.png","kissing":"1f617.png","kissing_cat":"1f63d.png","kissing_closed_eyes":"1f61a.png","kissing_heart":"1f618.png","kissing_smiling_eyes":"1f619.png","laughing":"1f606.png","left_speech_bubble":"1f5e8-fe0f.png","love_letter":"1f48c.png","lying_face":"1f925.png","mask":"1f637.png","money_mouth_face":"1f911.png","nauseated_face":"1f922.png","nerd_face":"1f913.png","neutral_face":"1f610.png","no_mouth":"1f636.png","open_mouth":"1f62e.png","orange_heart":"1f9e1.png","partying_face":"1f973.png","pensive":"1f614.png","persevere":"1f623.png","pleading_face":"1f97a.png","pouting_cat":"1f63e.png","purple_heart":"1f49c.png","rage":"1f621.png","relaxed":"263a-fe0f.png","relieved":"1f60c.png","revolving_hearts":"1f49e.png","right_anger_bubble":"1f5ef-fe0f.png","robot_face":"1f916.png","rolling_on_the_floor_laughing":"1f923.png","scream":"1f631.png","scream_cat":"1f640.png","see_no_evil":"1f648.png","shushing_face":"1f92b.png","skull":"1f480.png","skull_and_crossbones":"2620-fe0f.png","sleeping":"1f634.png","sleepy":"1f62a.png","slightly_frowning_face":"1f641.png","slightly_smiling_face":"1f642.png","smile":"1f604.png","smile_cat":"1f638.png","smiley":"1f603.png","smiley_cat":"1f63a.png","smiling_face_with_3_hearts":"1f970.png","smiling_imp":"1f608.png","smirk":"1f60f.png","smirk_cat":"1f63c.png","sneezing_face":"1f927.png","sob":"1f62d.png","space_invader":"1f47e.png","sparkling_heart":"1f496.png","speak_no_evil":"1f64a.png","speech_balloon":"1f4ac.png","star-struck":"1f929.png","stuck_out_tongue":"1f61b.png","stuck_out_tongue_closed_eyes":"1f61d.png","stuck_out_tongue_winking_eye":"1f61c.png","sunglasses":"1f60e.png","sweat":"1f613.png","sweat_drops":"1f4a6.png","sweat_smile":"1f605.png","thinking_face":"1f914.png","thought_balloon":"1f4ad.png","tired_face":"1f62b.png","triumph":"1f624.png","two_hearts":"1f495.png","unamused":"1f612.png","upside_down_face":"1f643.png","weary":"1f629.png","white_frowning_face":"2639-fe0f.png","white_heart":"1f90d.png","wink":"1f609.png","woozy_face":"1f974.png","worried":"1f61f.png","yawning_face":"1f971.png","yellow_heart":"1f49b.png","yum":"1f60b.png","zany_face":"1f92a.png","zipper_mouth_face":"1f910.png","zzz":"1f4a4.png"},"enableQQ":false,"highlight":true,"lang":"en","pageSize":10,"placeholder":"Your comment ...","recordIP":true,"serverURLs":"https://leancloud.hugoloveit.com","visitor":true}},"search":{"algoliaAppID":"PASDMWALPK","algoliaIndex":"index.en","algoliaSearchKey":"b42948e51daaa93df92381c8e2ac0f93","highlightTag":"em","maxResultLength":10,"noResultsFound":"No results found","snippetLength":30,"type":"algolia"}};</script><script type="text/javascript" src="/js/theme.min.js"></script></body>
+</html>

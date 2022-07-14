@@ -1,0 +1,15 @@
+<rss xmlns:atom="http://www.w3.org/2005/Atom" version="2.0">
+    <channel>
+        <title>pwn - 标签 - povcfe&#39;s blog</title>
+        <link>https://povcfe.github.io/tags/pwn/</link>
+        <description>pwn - 标签 - povcfe&#39;s blog</description>
+        <generator>Hugo -- gohugo.io</generator><language>zh-CN</language><lastBuildDate>Sat, 21 Sep 2019 10:34:55 -0800</lastBuildDate><atom:link href="https://povcfe.github.io/tags/pwn/" rel="self" type="application/rss+xml" /><item>
+    <title>Pwn思维导图</title>
+    <link>https://povcfe.github.io/posts/pwn/</link>
+    <pubDate>Sat, 21 Sep 2019 10:34:55 -0800</pubDate>
+    <author>作者</author>
+    <guid>https://povcfe.github.io/posts/pwn/</guid>
+    <description><![CDATA[根据ctf-wiki总结栈溢出, 格式化字符串漏洞, 部分堆溢出利用, 制成如下思维导图
+ pwn.pdf]]></description>
+</item></channel>
+</rss>

@@ -1,0 +1,14 @@
+<rss xmlns:atom="http://www.w3.org/2005/Atom" version="2.0">
+    <channel>
+        <title>nginx-ldap-auth之user - 标签 - povcfe</title>
+        <link>https://povcfe.github.io/tags/nginx-ldap-auth%E4%B9%8Buser/</link>
+        <description>nginx-ldap-auth之user - 标签 - povcfe</description>
+        <generator>Hugo -- gohugo.io</generator><language>zh-CN</language><lastBuildDate>Tue, 19 Apr 2022 03:13:03 -0700</lastBuildDate><atom:link href="https://povcfe.github.io/tags/nginx-ldap-auth%E4%B9%8Buser/" rel="self" type="application/rss+xml" /><item>
+    <title>nginx-ldap-auth之user注入漏洞</title>
+    <link>https://povcfe.github.io/posts/nginx-ldap-auth/</link>
+    <pubDate>Tue, 19 Apr 2022 03:13:03 -0700</pubDate>
+    <author>作者</author>
+    <guid>https://povcfe.github.io/posts/nginx-ldap-auth/</guid>
+    <description><![CDATA[前段时间, 有人声称发现nginx 0day, 并在NginxDay中持续跟进漏洞上报流程, 虽然漏洞确实存在, 但漏洞只存在于一个示例项目, 且漏洞危害较低.]]></description>
+</item></channel>
+</rss>

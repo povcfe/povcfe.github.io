@@ -1,0 +1,23 @@
+<rss xmlns:atom="http://www.w3.org/2005/Atom" version="2.0">
+    <channel>
+        <title>nginx - 标签 - povcfe&#39;s blog</title>
+        <link>https://povcfe.github.io/tags/nginx/</link>
+        <description>nginx - 标签 - povcfe&#39;s blog</description>
+        <generator>Hugo -- gohugo.io</generator><language>zh-CN</language><lastBuildDate>Tue, 19 Apr 2022 03:13:03 -0700</lastBuildDate><atom:link href="https://povcfe.github.io/tags/nginx/" rel="self" type="application/rss+xml" /><item>
+    <title>nginx-ldap-auth之user注入漏洞</title>
+    <link>https://povcfe.github.io/posts/nginx-ldap-auth/</link>
+    <pubDate>Tue, 19 Apr 2022 03:13:03 -0700</pubDate>
+    <author>作者</author>
+    <guid>https://povcfe.github.io/posts/nginx-ldap-auth/</guid>
+    <description><![CDATA[前段时间, 有人声称发现nginx 0day, 并在NginxDay中持续跟进漏洞上报流程, 虽然漏洞确实存在, 但漏洞只存在于一个示例项目, 且漏洞危害较低. 就目前笔者漏洞分析来看, 该行为多少有点花里胡哨, 下面分析一下这个有些鸡肋的漏洞.
+   nginx提供ngx_http_auth_request_module模块用于鉴权, 其功能特点为需要用户自定义实现鉴权api, 并由ngx_http_auth_request_module模块调用
+  nginx-ldap-auth结合ldap实现鉴权机制, 是一种用户自定义实现鉴权api的示例项目
+  nginx-ldap-auth功能原理   nginx-ldap-auth关键文件
+ backend-sample-app.py(处理登录表单), 将user:passwd base64编码后设置Cookie nginx-ldap-auth-daemon.py(结合ldap进行鉴权), 解析http报文中的Cookie/Authorization(有Cookie的情况下鉴权以Cookie为主)    ngx_http_auth_request_module模块常用路由
+  nginx直接向nginx-ldap-auth-daemon.py对应url发起请求, 此时未设置Cookie/Authorization返回401
+  nginx转发请求至backend-sample-app.py对应url处理登录表单, 并设置Cookie
+  nginx重定向请求至nginx-ldap-auth-daemon.py对应url, 此时存在Cookie, 解析user, passwd, 调用ldap实现鉴权, 成功则返回200
+    nginx-ldap-auth-daemon.py鉴权分析 从下面鉴权代码可以看出, nginx-ldap-auth-daemon.py使用searchfilter过滤ldap结果, 查找目标登录用户
+// ctx[&#39;template&#39;]默认对应: &#39;template&#39;: (&#39;X-Ldap-Template&#39;, &#39;(cn=%(username)s)&#39;), // ctx[&#39;user&#39;], ctx[&#39;pass&#39;]: 从Cookie中解析出的user, passwd searchfilter = ctx[&#39;template&#39;] % { &#39;username&#39;: ctx[&#39;user&#39;] } .]]></description>
+</item></channel>
+</rss>

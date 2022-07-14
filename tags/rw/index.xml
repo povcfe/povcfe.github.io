@@ -1,0 +1,67 @@
+<rss xmlns:atom="http://www.w3.org/2005/Atom" version="2.0">
+    <channel>
+        <title>rw - 标签 - povcfe&#39;s blog</title>
+        <link>https://povcfe.github.io/tags/rw/</link>
+        <description>rw - 标签 - povcfe&#39;s blog</description>
+        <generator>Hugo -- gohugo.io</generator><language>zh-CN</language><lastBuildDate>Sun, 02 Feb 2020 10:32:55 -0800</lastBuildDate><atom:link href="https://povcfe.github.io/tags/rw/" rel="self" type="application/rss+xml" /><item>
+    <title>linux 内核提权总结(demo&#43;exp分析) -- 任意读写(四)</title>
+    <link>https://povcfe.github.io/posts/kernel_rw4/</link>
+    <pubDate>Sun, 02 Feb 2020 10:32:55 -0800</pubDate>
+    <author>作者</author>
+    <guid>https://povcfe.github.io/posts/kernel_rw4/</guid>
+    <description><![CDATA[发表于看雪论坛
+hijack_modprobe_path篇   原理同hijack_prctl, 当用户执行错误格式的elf文件时内核调用call_usermodehelper(char *modprobe_path &hellip;)
+  修改modprobe后，即可实现root权限任意命令执行
+  攻击流程
+ (内核任意读写漏洞)内核修改全局变量 modprobe_path为目标指令 写入错误格式elf文件，并手动执行，触发    一. 利用步骤 1. 定位modprobe_path(开启kaslr)   同hijack_vdso，泄漏vdso地址，因为内核kaslr开启后，只有较高字节的地址发生偏移，且vdso与基地址相距较近，所以可以使用vdso定位内核加载地址
+  获得当前调试阶段modprobe_path与内核基地址固定偏移
+  modprobe_path_addr = 内核基地址+固定偏移
+  2. 修改modprobe_path 为任意指令 二. 驱动代码(见cred) 三. exp #define _GNU_SOURCE  #include &lt;stdio.h&gt;#include &lt;string.h&gt;#include &lt;fcntl.h&gt;#include &lt;unistd.h&gt;#include &lt;stdlib.h&gt;#include &lt;sys/ioctl.h&gt;#include &lt;sys/auxv.h&gt;#include &lt;sys/prctl.h&gt; #define CHANGE_POINT 0x100000 #define RW_READ 0x100001 #define RW_WRITE 0x100002  size_t modprobe_path = 0xe3cba0; size_t vmlinux_base = 0; struct vunl { char *point; size_t size; } VUNL; void leak_data(int fd, char *buf) { char *res = NULL; VUNL.]]></description>
+</item><item>
+    <title>linux 内核提权总结(demo&#43;exp分析) -- 任意读写(三) </title>
+    <link>https://povcfe.github.io/posts/kernel_rw3/</link>
+    <pubDate>Thu, 30 Jan 2020 10:32:30 -0800</pubDate>
+    <author>作者</author>
+    <guid>https://povcfe.github.io/posts/kernel_rw3/</guid>
+    <description><![CDATA[发表于看雪论坛
+hijack_prctl篇   prctl函数: 用户态函数，可用于定制进程参数，非常适合和内核进行交互
+ 用户态执行prctl函数后触发prctl系统调用 内核接收参数后执行security_task_prctl security_task_prctl执行hook.task_prctl    poweroff_work_func函数: 内核函数，执行 run_cmd(poweroff_cmd)，即root权限执行poweroff_cmd
+  攻击流程:
+ 劫持hook.task_prctl为目标函数地址(poweroff_work_func) 修改poweroff_cmd为目标指令 用户执行prctl函数，触发    一. 利用步骤 1. 定位内核加载基地址(开启kaslr)  同hijack_vdso，泄漏vdso地址，因为内核kaslr开启后，只有较高字节的地址发生偏移，且vdso与基地址相距较近，所以可以使用vdso定位内核加载地址  2. 定位hook.prctl，poweroff_cmd地址   gdb调试内核并在security_task_prctl函数处下断点，用户态程序执行prctl函数，进入security_task_prctl函数，单步执行汇编指令，通过内存查看hook.task_prctl 地址
+  gdb 执行 p poweroff_cmd，获得poweroff_cmd真实地址
+  获得hook.prctl，poweroff_cmd与内核基地址固定偏移
+  3. 修改poweroff_cmd 为任意指令 4. 用户态执行prctl函数，触发 二. 驱动代码(见cred篇) 三. exp #define _GNU_SOURCE  #include &lt;stdio.h&gt;#include &lt;string.h&gt;#include &lt;fcntl.h&gt;#include &lt;unistd.h&gt;#include &lt;stdlib.h&gt;#include &lt;sys/ioctl.h&gt;#include &lt;sys/auxv.h&gt;#include &lt;sys/prctl.]]></description>
+</item><item>
+    <title>linux 内核提权总结(demo&#43;exp分析) -- 任意读写(二)</title>
+    <link>https://povcfe.github.io/posts/kernel_rw2/</link>
+    <pubDate>Tue, 21 Jan 2020 10:32:01 -0800</pubDate>
+    <author>作者</author>
+    <guid>https://povcfe.github.io/posts/kernel_rw2/</guid>
+    <description><![CDATA[发表于看雪论坛
+hijack_vdso篇   vdso: 内核实现的一个动态库，存在于内核，然后映射到用户态空间，可由用户态直接调用
+ 内核中的vdso如果被修改，那么用户态空间的vdso也会同步被修改    攻击流程
+ (内核任意代码执行漏洞)内核调用set_memory_rw 函数修改内核vdso页面属性，使得用户态可以直接修改vdso，劫持vdso为shellcode，触发条件同1 (内核任意读写漏洞)内核修改内核vdso数据，写入shellcode，使得用户态vdso中函数被劫持，当高权限进程调用vdso中特定函数时，触发shellcode，本篇只讲解攻击流程2    一. 利用步骤 1. 定位内核态vdso位置   vdso中存在一些比较有特点的字符串，比如&quot;gettimeofday&quot;，在拥有任意读漏洞的前提下，从0xffffffff80000000(开启kaslr后内核基地址在此地址基础上往上偏移)开始按页搜索内存
+  如果内存其他地方存在&quot;gettimeofday&quot;字符串，且出现在vdso之前，则会返回错误地址。所以在内存搜索时，应以返回地址为起始，使用gdb dump 0x2000 内存，使用ida查看是否是vdso，如果不是，可以忽略这个错误地址，继续向下搜索。
+  得到真正的vdso后，查看&quot;gettimeofday&quot;与vdso起始地址的偏移，后续匹配vdso时，加上这个偏移条件
+  2. 向内核中vdso写入shellcode   shellcode功能: 判断进程是否具有root权限，如果成立，则开辟新进程用来反弹root shell
+  shellcode写入位置: 定位vdso上某函数，比如gettimeofday函数，使用shellcode覆盖
+  shellcode触发条件: 当高权限进程调用gettimeofday函数时，自动执行shellcode 反弹root shell
+  二. 驱动代码(见cred篇) 三. exp #define _GNU_SOURCE  #include &lt;stdio.h&gt;#include &lt;string.h&gt;#include &lt;fcntl.h&gt;#include &lt;unistd.h&gt;#include &lt;stdlib.h&gt;#include &lt;sys/ioctl.h&gt;#include &lt;sys/auxv.]]></description>
+</item><item>
+    <title>linux 内核提权总结(demo&#43;exp分析) -- 任意读写(一)</title>
+    <link>https://povcfe.github.io/posts/kernel_rw1/</link>
+    <pubDate>Sat, 11 Jan 2020 10:31:33 -0800</pubDate>
+    <author>作者</author>
+    <guid>https://povcfe.github.io/posts/kernel_rw1/</guid>
+    <description><![CDATA[发表于看雪论坛
+cred篇   每个线程在内核中都对应一个线程结构块thread_info
+  thread_info中存在task_struct类型结构体
+  struct task_struct中存在cred结构体用来保存线程权限
+  攻击流程
+ 定位某进程的cred结构体 将cred结构提结构体的uid~fsgid全部覆写为0(前28字节)    一. 利用步骤 1. 定位cred结构体   task_struct中存在char comm[TASK_COMM_LEN]
+  comm字符串使用prctl函数的PR_SET_NAME自行设置
+  在内存中搜索被设置后的comm字符串，cred结构体地址就在附近
+  泄漏cred结构体地址，定向覆盖cred结构体
+  2. 进程权限被修改，变成root进程，执行system(&quot;/bin/sh&quot;)，弹出root shell 二. 驱动代码 #include &lt;linux/init.h&gt;#include &lt;linux/module.h&gt;#include &lt;linux/cdev.h&gt;#include &lt;linux/device.h&gt;#include &lt;linux/fs.h&gt;#include &lt;linux/uaccess.h&gt;#include &lt;asm/cacheflush.h&gt; #define CHANGE_POINT 0x100000 #define RW_READ 0x100001 #define RW_WRITE 0x100002 #define SET_MEM 0x100003  dev_t dev_id = 0; struct cdev cdev_0; struct class *dev_class; struct vunl { char *point; size_t size; } VUNL; long rw_any_ioctl(struct file *filp, unsigned int cmd, unsigned long arg) { int ret = 0; switch (cmd) { case CHANGE_POINT: ret = copy_from_user(&amp;VUNL, (struct vunl *)(arg), sizeof(struct vunl)); break; case RW_READ: ret = copy_to_user((char *)arg, (char *)VUNL.]]></description>
+</item></channel>
+</rss>

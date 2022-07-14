@@ -1,0 +1,15 @@
+<rss xmlns:atom="http://www.w3.org/2005/Atom" version="2.0">
+    <channel>
+        <title>网络 - 标签 - povcfe&#39;s blog</title>
+        <link>https://povcfe.github.io/tags/%E7%BD%91%E7%BB%9C/</link>
+        <description>网络 - 标签 - povcfe&#39;s blog</description>
+        <generator>Hugo -- gohugo.io</generator><language>zh-CN</language><lastBuildDate>Sun, 21 Mar 2021 07:01:39 -0700</lastBuildDate><atom:link href="https://povcfe.github.io/tags/%E7%BD%91%E7%BB%9C/" rel="self" type="application/rss+xml" /><item>
+    <title>linux内核(5.4.81)---网络模块源码分析</title>
+    <link>https://povcfe.github.io/posts/kernel_net/</link>
+    <pubDate>Sun, 21 Mar 2021 07:01:39 -0700</pubDate>
+    <author>作者</author>
+    <guid>https://povcfe.github.io/posts/kernel_net/</guid>
+    <description><![CDATA[发表于安全客
+ 1. socket  1.1 sock_create 1.1.1 sock_alloc 1.1.2 inet_create 1.1.2.1 sk_alloc 1.2 sock_map_fd   2. send(运输层)  2.1 import_single_range 2.2 sockfd_lookup_light 2.3 sock_sendmsg 2.4 udp_sendmsg 2.4.1 udp_cmsg_send 2.4.2 TOS 2.4.3 多播/本地广播 2.4.4 检查sock中路由信息是否过期 2.4.5 udp_send_skb 2.4.6 udp_push_pending_frames   3. recv(运输层)  2.1 udp_recvmsg 2.1.1 __skb_recv_udp 2.1.1.1 __skb_try_recv_from_queue   4. IP(网络层)  4.1 ip_cmsg_send 4.2 ip_make_skb 4.2.1 ip_setup_cork 4.2.2 __ip_make_skb 4.3 ip_append_data 4.3.1 __ip_append_data 4.4 ip_send_skb 4.]]></description>
+</item></channel>
+</rss>

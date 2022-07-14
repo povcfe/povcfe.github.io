@@ -1,0 +1,27 @@
+<rss xmlns:atom="http://www.w3.org/2005/Atom" version="2.0">
+    <channel>
+        <title>boot - 标签 - povcfe&#39;s blog</title>
+        <link>https://povcfe.github.io/tags/boot/</link>
+        <description>boot - 标签 - povcfe&#39;s blog</description>
+        <generator>Hugo -- gohugo.io</generator><language>zh-CN</language><lastBuildDate>Sat, 06 Jun 2020 10:34:06 -0800</lastBuildDate><atom:link href="https://povcfe.github.io/tags/boot/" rel="self" type="application/rss+xml" /><item>
+    <title>linux内核(5.4.81)---内核引导</title>
+    <link>https://povcfe.github.io/posts/kernel_boot/</link>
+    <pubDate>Sat, 06 Jun 2020 10:34:06 -0800</pubDate>
+    <author>作者</author>
+    <guid>https://povcfe.github.io/posts/kernel_boot/</guid>
+    <description><![CDATA[发表于看雪论坛
+ 本文详细讲解linux内核的加载过程，参考linux-insiders，并结合linux-5.6.6代码对原文的部分老旧内容做修改
+ 引导   按下电源开关后, CPU设置寄存器为预定值，程序在实模式下运行，程序首先执行0xfffffff0(映射至ROM)处内容，此处为复位向量，直接跳转至BIOS。
+  BIOS初始化，检查硬件，寻找可引导设备，跳转至引导扇区代码(boot.img)
+  寻找可引导设备方式: 定位MBR分区, 引导扇区存储在第一个扇区(512字节)的头446字节处。引导扇区以0x55和0xaa(magic bytes)结束。
+  MBR分区代码只占用一个扇区, 空间较小，只执行了一些初始化工作, 然后跳转至GRUB2的core image(以diskboot.img为起始)继续执行。
+    core image的初始化代码将剩余的core image(包含GRUB 2的内核代码和文件系统驱动)加载到内存中，运行grub_main
+  grub_main 初始化控制台，计算模块基地址，设置root设备，读取 grub 配置文件，加载模块等，最后将grub切换为normal模式
+  normal模式调用grub_normal_execute完成最后的准备工作，显示一个菜单列出可用的操作系统。
+  选择操作系统后grub_menu_execute_entry被调用，用以运行boot命令，引导操作系统, 运行kernel代码
+  内核自带bootloader，但是新版本内核已经弃用
+  kernel boot protocol规定，bootloader必须具备协议中规定的头信息
+      实模式运行内核   kernel地址(header.S _start)位于X + sizeof(KernelBootSector) + 1
+ 内核加载进入内存后，空间排布   | Protected-mode kernel | 100000 +------------------------+ | I/O memory hole | 0A0000 +------------------------+ | Reserved for BIOS | Leave as much as possible unused ~ ~ | Command line | (Can also be below the X+10000 mark) X+10000 +------------------------+ | Stack/heap | For use by the kernel real-mode code.]]></description>
+</item></channel>
+</rss>

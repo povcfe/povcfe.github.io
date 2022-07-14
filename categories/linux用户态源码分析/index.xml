@@ -1,0 +1,16 @@
+<rss xmlns:atom="http://www.w3.org/2005/Atom" version="2.0">
+    <channel>
+        <title>linux用户态源码分析 - 分类 - povcfe&#39;s blog</title>
+        <link>https://povcfe.github.io/categories/linux%E7%94%A8%E6%88%B7%E6%80%81%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/</link>
+        <description>linux用户态源码分析 - 分类 - povcfe&#39;s blog</description>
+        <generator>Hugo -- gohugo.io</generator><language>zh-CN</language><lastBuildDate>Sun, 06 Oct 2019 10:23:59 -0800</lastBuildDate><atom:link href="https://povcfe.github.io/categories/linux%E7%94%A8%E6%88%B7%E6%80%81%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/" rel="self" type="application/rss+xml" /><item>
+    <title>glibc2.23 ptmalloc 原理概述</title>
+    <link>https://povcfe.github.io/posts/ptmalloc/</link>
+    <pubDate>Sun, 06 Oct 2019 10:23:59 -0800</pubDate>
+    <author>作者</author>
+    <guid>https://povcfe.github.io/posts/ptmalloc/</guid>
+    <description><![CDATA[发表于看雪论坛
+ linux用户态下的堆溢出利用即是对ptmalloc2安全机制的绕过，只有深入的了解ptmalloc，才能进行精准的堆溢出攻击
+ malloc __libc_malloc(传入参数:size)  判断 是否定义hook函数 ，如果存在则调用hook函数，否则跳到2  void *(*hook) (size_t, const void *) = atomic_forced_read (__malloc_hook); if (__builtin_expect (hook != NULL, 0)) return (*hook)(bytes, RETURN_ADDRESS (0)); 执行arena_get得到空闲分配区  arena_get (ar_ptr, bytes); 调用_int_malloc()获得内存地址  victim = _int_malloc (ar_ptr, bytes); 如果分配失败，ptmalloc会尝试再去寻找一个可用的arena并进行内存分配  if (!victim &amp;&amp; ar_ptr != NULL) { LIBC_PROBE (memory_malloc_retry, 1, bytes); ar_ptr = arena_get_retry (ar_ptr, bytes); victim = _int_malloc (ar_ptr, bytes); } 得到内存地址后解锁分配区  if (ar_ptr !]]></description>
+</item></channel>
+</rss>

