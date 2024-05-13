@@ -77,30 +77,30 @@ ffffec0000000000 | -20 TB | fffffbffffffffff | 16 TB | KASAN shadow memory 具�
   
   
   
-  <link rel="preload stylesheet" as="style" href="https://povcfe.github.io/main.min.css" />
+  <link rel="preload stylesheet" as="style" href="https://www.povcfe.site/main.min.css" />
 
   
   
   
   
   
-  <link rel="preload" as="image" href="https://povcfe.github.io/theme.png" />
+  <link rel="preload" as="image" href="https://www.povcfe.site/theme.png" />
 
   
   
   
   
-  <link rel="preload" as="image" href="https://povcfe.github.io/avatar.jpg" />
+  <link rel="preload" as="image" href="https://www.povcfe.site/avatar.jpg" />
   
   
 
   
   
-  <link rel="preload" as="image" href="https://povcfe.github.io/twitter.svg" />
+  <link rel="preload" as="image" href="https://www.povcfe.site/twitter.svg" />
   
-  <link rel="preload" as="image" href="https://povcfe.github.io/github.svg" />
+  <link rel="preload" as="image" href="https://www.povcfe.site/github.svg" />
   
-  <link rel="preload" as="image" href="https://povcfe.github.io/rss.svg" />
+  <link rel="preload" as="image" href="https://www.povcfe.site/rss.svg" />
   
   
 
@@ -108,7 +108,7 @@ ffffec0000000000 | -20 TB | fffffbffffffffff | 16 TB | KASAN shadow memory 具�
   
   <script
     defer
-    src="https://povcfe.github.io/highlight.min.js"
+    src="https://www.povcfe.site/highlight.min.js"
     onload="hljs.initHighlightingOnLoad();"
   ></script>
   
@@ -118,8 +118,8 @@ ffffec0000000000 | -20 TB | fffffbffffffffff | 16 TB | KASAN shadow memory 具�
   
 
   
-  <link rel="icon" href="https://povcfe.github.io/favicon.ico" />
-  <link rel="apple-touch-icon" href="https://povcfe.github.io/apple-touch-icon.png" />
+  <link rel="icon" href="https://www.povcfe.site/favicon.ico" />
+  <link rel="apple-touch-icon" href="https://www.povcfe.site/apple-touch-icon.png" />
 
   
   <meta name="generator" content="Hugo 0.111.3">
@@ -146,7 +146,7 @@ KASAN 简述 KASAN是内核用于动态检测内存错误的工具, 简单来说
 ffffec0000000000 | -20 TB | fffffbffffffffff | 16 TB | KASAN shadow memory 具体规则(&#43;: byte可访问, -: byte不可访问)
 如果1byte shadow memory对应的8bytes 内存都可访问, 则*(shadow memory) == 0 [0] -&gt; [&#43;, &#43;, &#43;, &#43;, &#43;, &#43;, &#43;, &#43;] 如果1byte shadow memory对应的8bytes 内存都不可访问, 则*(shadow memory)为负数 [-1] -&gt; [-, -, -, -, -, -, -, -] 如果1byte shadow memory对应的8bytes 内存中有N bytes可访问, 则*(shadow memory) == N if N = 3 [3] -&gt; [&#43;, &#43;, &#43;, -, -, -, -, -] 实现原理" />
 <meta property="og:type" content="article" />
-<meta property="og:url" content="https://povcfe.github.io/post/kernel_kasan/" /><meta property="article:section" content="post" />
+<meta property="og:url" content="https://www.povcfe.site/post/kernel_kasan/" /><meta property="article:section" content="post" />
 <meta property="article:published_time" content="2021-03-21T00:00:00-04:00" />
 <meta property="article:modified_time" content="2021-03-21T00:00:00-04:00" />
 
@@ -162,7 +162,7 @@ ffffec0000000000 | -20 TB | fffffbffffffffff | 16 TB | KASAN shadow memory 具�
   
   
   
-  <link rel="canonical" href="https://povcfe.github.io/post/kernel_kasan/" />
+  <link rel="canonical" href="https://www.povcfe.site/post/kernel_kasan/" />
   
   
 </head>
@@ -172,7 +172,7 @@ ffffec0000000000 | -20 TB | fffffbffffffffff | 16 TB | KASAN shadow memory 具�
   <div class="relative z-50 mr-auto flex items-center">
     <a
       class="-translate-x-[1px] -translate-y-[1px] text-2xl font-semibold"
-      href="https://povcfe.github.io/"
+      href="https://www.povcfe.site/"
       >povcfe&#39;s site</a
     >
     <div
@@ -267,7 +267,7 @@ ffffec0000000000 | -20 TB | fffffbffffffffff | 16 TB | KASAN shadow memory 具�
       <a
         class="h-8 w-8 text-[0] [background:var(--url)_center_center/cover_no-repeat] lg:h-6 lg:w-6"
         style="--url: url(./rss.svg)"
-        href="https://povcfe.github.io/index.xml"
+        href="https://www.povcfe.site/index.xml"
         target="_blank"
         rel="alternate"
       >
@@ -868,14 +868,14 @@ ffffec0000000000 | -20 TB | fffffbffffffffff | 16 TB | KASAN shadow memory 具�
     
     <a
       class="flex w-1/2 items-center rounded-l-md p-6 pr-3 font-semibold no-underline hover:bg-black/[2%] dark:hover:bg-white/[3%]"
-      href="https://povcfe.github.io/post/kernel_net/"
+      href="https://www.povcfe.site/post/kernel_net/"
       ><span class="mr-1.5">←</span><span>linux内核(5.4.81)---网络模块源码分析</span></a
     >
     
     
     <a
       class="ml-auto flex w-1/2 items-center justify-end rounded-r-md p-6 pl-3 font-semibold no-underline hover:bg-black/[2%] dark:hover:bg-white/[3%]"
-      href="https://povcfe.github.io/post/reprint/"
+      href="https://www.povcfe.site/post/reprint/"
       ><span>一些思考</span><span class="ml-1.5">→</span></a
     >
     
@@ -903,7 +903,7 @@ ffffec0000000000 | -20 TB | fffffbffffffffff | 16 TB | KASAN shadow memory 具�
 >
   <div class="mr-auto">
     &copy; 2024
-    <a class="link" href="https://povcfe.github.io/">povcfe&#39;s site</a>
+    <a class="link" href="https://www.povcfe.site/">povcfe&#39;s site</a>
   </div>
   <a class="link mx-6" href="https://gohugo.io/" rel="noopener" target="_blank"
     >Powered by Hugo️️</a

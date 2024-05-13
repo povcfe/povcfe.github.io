@@ -2,53 +2,53 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
-    <loc>https://povcfe.github.io/post/nginx-ldap-auth/</loc>
+    <loc>https://www.povcfe.site/post/nginx-ldap-auth/</loc>
     <lastmod>2022-04-19T00:00:00-04:00</lastmod>
   </url><url>
-    <loc>https://povcfe.github.io/post/</loc>
+    <loc>https://www.povcfe.site/post/</loc>
     <lastmod>2022-04-19T00:00:00-04:00</lastmod>
   </url><url>
-    <loc>https://povcfe.github.io/</loc>
+    <loc>https://www.povcfe.site/</loc>
     <lastmod>2022-04-19T00:00:00-04:00</lastmod>
   </url><url>
-    <loc>https://povcfe.github.io/post/kernel_net/</loc>
+    <loc>https://www.povcfe.site/post/kernel_net/</loc>
     <lastmod>2021-03-28T00:00:00-04:00</lastmod>
   </url><url>
-    <loc>https://povcfe.github.io/post/kernel_kasan/</loc>
+    <loc>https://www.povcfe.site/post/kernel_kasan/</loc>
     <lastmod>2021-03-21T00:00:00-04:00</lastmod>
   </url><url>
-    <loc>https://povcfe.github.io/post/reprint/</loc>
+    <loc>https://www.povcfe.site/post/reprint/</loc>
     <lastmod>2021-01-27T00:00:00-04:00</lastmod>
   </url><url>
-    <loc>https://povcfe.github.io/post/kernel_mm/</loc>
+    <loc>https://www.povcfe.site/post/kernel_mm/</loc>
     <lastmod>2021-01-12T00:00:00-04:00</lastmod>
   </url><url>
-    <loc>https://povcfe.github.io/post/kernel_boot/</loc>
+    <loc>https://www.povcfe.site/post/kernel_boot/</loc>
     <lastmod>2020-06-06T00:00:00-04:00</lastmod>
   </url><url>
-    <loc>https://povcfe.github.io/post/kernel_rw3/</loc>
+    <loc>https://www.povcfe.site/post/kernel_rw3/</loc>
     <lastmod>2020-02-02T00:00:00-04:00</lastmod>
   </url><url>
-    <loc>https://povcfe.github.io/post/kernel_rw2/</loc>
+    <loc>https://www.povcfe.site/post/kernel_rw2/</loc>
     <lastmod>2020-01-30T00:00:00-04:00</lastmod>
   </url><url>
-    <loc>https://povcfe.github.io/post/kernel_rw1/</loc>
+    <loc>https://www.povcfe.site/post/kernel_rw1/</loc>
     <lastmod>2020-01-11T00:00:00-04:00</lastmod>
   </url><url>
-    <loc>https://povcfe.github.io/post/kernel_rop2/</loc>
+    <loc>https://www.povcfe.site/post/kernel_rop2/</loc>
     <lastmod>2020-01-06T00:00:00-04:00</lastmod>
   </url><url>
-    <loc>https://povcfe.github.io/post/kernel_rop1/</loc>
+    <loc>https://www.povcfe.site/post/kernel_rop1/</loc>
     <lastmod>2020-01-01T00:00:00-04:00</lastmod>
   </url><url>
-    <loc>https://povcfe.github.io/post/ptmalloc/</loc>
+    <loc>https://www.povcfe.site/post/ptmalloc/</loc>
     <lastmod>2019-10-06T00:00:00-04:00</lastmod>
   </url><url>
-    <loc>https://povcfe.github.io/post/pwn/</loc>
+    <loc>https://www.povcfe.site/post/pwn/</loc>
     <lastmod>2019-09-21T00:00:00-04:00</lastmod>
   </url><url>
-    <loc>https://povcfe.github.io/categories/</loc>
+    <loc>https://www.povcfe.site/categories/</loc>
   </url><url>
-    <loc>https://povcfe.github.io/tags/</loc>
+    <loc>https://www.povcfe.site/tags/</loc>
   </url>
 </urlset>

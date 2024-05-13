@@ -82,30 +82,30 @@ nginx-ldap-auth-daemon.py鉴权分析 从下面鉴权代码可以看出, nginx-l
   
   
   
-  <link rel="preload stylesheet" as="style" href="https://povcfe.github.io/main.min.css" />
+  <link rel="preload stylesheet" as="style" href="https://www.povcfe.site/main.min.css" />
 
   
   
   
   
   
-  <link rel="preload" as="image" href="https://povcfe.github.io/theme.png" />
+  <link rel="preload" as="image" href="https://www.povcfe.site/theme.png" />
 
   
   
   
   
-  <link rel="preload" as="image" href="https://povcfe.github.io/avatar.jpg" />
+  <link rel="preload" as="image" href="https://www.povcfe.site/avatar.jpg" />
   
   
 
   
   
-  <link rel="preload" as="image" href="https://povcfe.github.io/twitter.svg" />
+  <link rel="preload" as="image" href="https://www.povcfe.site/twitter.svg" />
   
-  <link rel="preload" as="image" href="https://povcfe.github.io/github.svg" />
+  <link rel="preload" as="image" href="https://www.povcfe.site/github.svg" />
   
-  <link rel="preload" as="image" href="https://povcfe.github.io/rss.svg" />
+  <link rel="preload" as="image" href="https://www.povcfe.site/rss.svg" />
   
   
 
@@ -113,7 +113,7 @@ nginx-ldap-auth-daemon.py鉴权分析 从下面鉴权代码可以看出, nginx-l
   
   <script
     defer
-    src="https://povcfe.github.io/highlight.min.js"
+    src="https://www.povcfe.site/highlight.min.js"
     onload="hljs.initHighlightingOnLoad();"
   ></script>
   
@@ -123,8 +123,8 @@ nginx-ldap-auth-daemon.py鉴权分析 从下面鉴权代码可以看出, nginx-l
   
 
   
-  <link rel="icon" href="https://povcfe.github.io/favicon.ico" />
-  <link rel="apple-touch-icon" href="https://povcfe.github.io/apple-touch-icon.png" />
+  <link rel="icon" href="https://www.povcfe.site/favicon.ico" />
+  <link rel="apple-touch-icon" href="https://www.povcfe.site/apple-touch-icon.png" />
 
   
   <meta name="generator" content="Hugo 0.111.3">
@@ -161,7 +161,7 @@ nginx重定向请求至nginx-ldap-auth-daemon.py对应url, 此时存在Cookie, �
 nginx-ldap-auth-daemon.py鉴权分析 从下面鉴权代码可以看出, nginx-ldap-auth-daemon.py使用searchfilter过滤ldap结果, 查找目标登录用户
 // ctx[&#39;template&#39;]默认对应: &#39;template&#39;: (&#39;X-Ldap-Template&#39;, &#39;(cn=%(username)s)&#39;), // ctx[&#39;user&#39;], ctx[&#39;pass&#39;]: 从Cookie中解析出的user, passwd searchfilter = ctx[&#39;template&#39;] % { &#39;username&#39;: ctx[&#39;user&#39;] } ... // 默认使用(cn=username)这种模式在ldap中查找用户 results = ldap_obj.search_s(ctx[&#39;basedn&#39;], ldap.SCOPE_SUBTREE, searchfilter, [&#39;objectclass&#39;], 1) user_entry = results[0] ldap_dn = user_entry[0] ldap_obj." />
 <meta property="og:type" content="article" />
-<meta property="og:url" content="https://povcfe.github.io/post/nginx-ldap-auth/" /><meta property="article:section" content="post" />
+<meta property="og:url" content="https://www.povcfe.site/post/nginx-ldap-auth/" /><meta property="article:section" content="post" />
 <meta property="article:published_time" content="2022-04-19T00:00:00-04:00" />
 <meta property="article:modified_time" content="2022-04-19T00:00:00-04:00" />
 
@@ -182,7 +182,7 @@ nginx-ldap-auth-daemon.py鉴权分析 从下面鉴权代码可以看出, nginx-l
   
   
   
-  <link rel="canonical" href="https://povcfe.github.io/post/nginx-ldap-auth/" />
+  <link rel="canonical" href="https://www.povcfe.site/post/nginx-ldap-auth/" />
   
   
 </head>
@@ -192,7 +192,7 @@ nginx-ldap-auth-daemon.py鉴权分析 从下面鉴权代码可以看出, nginx-l
   <div class="relative z-50 mr-auto flex items-center">
     <a
       class="-translate-x-[1px] -translate-y-[1px] text-2xl font-semibold"
-      href="https://povcfe.github.io/"
+      href="https://www.povcfe.site/"
       >povcfe&#39;s site</a
     >
     <div
@@ -287,7 +287,7 @@ nginx-ldap-auth-daemon.py鉴权分析 从下面鉴权代码可以看出, nginx-l
       <a
         class="h-8 w-8 text-[0] [background:var(--url)_center_center/cover_no-repeat] lg:h-6 lg:w-6"
         style="--url: url(./rss.svg)"
-        href="https://povcfe.github.io/index.xml"
+        href="https://www.povcfe.site/index.xml"
         target="_blank"
         rel="alternate"
       >
@@ -439,7 +439,7 @@ nginx-ldap-auth-daemon.py鉴权分析 从下面鉴权代码可以看出, nginx-l
     
     <a
       class="ml-auto flex w-1/2 items-center justify-end rounded-r-md p-6 pl-3 font-semibold no-underline hover:bg-black/[2%] dark:hover:bg-white/[3%]"
-      href="https://povcfe.github.io/post/kernel_net/"
+      href="https://www.povcfe.site/post/kernel_net/"
       ><span>linux内核(5.4.81)---网络模块源码分析</span><span class="ml-1.5">→</span></a
     >
     
@@ -467,7 +467,7 @@ nginx-ldap-auth-daemon.py鉴权分析 从下面鉴权代码可以看出, nginx-l
 >
   <div class="mr-auto">
     &copy; 2024
-    <a class="link" href="https://povcfe.github.io/">povcfe&#39;s site</a>
+    <a class="link" href="https://www.povcfe.site/">povcfe&#39;s site</a>
   </div>
   <a class="link mx-6" href="https://gohugo.io/" rel="noopener" target="_blank"
     >Powered by Hugo️️</a

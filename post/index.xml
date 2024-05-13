@@ -2,17 +2,17 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
     <title>Posts on povcfe&#39;s site</title>
-    <link>https://povcfe.github.io/post/</link>
+    <link>https://www.povcfe.site/post/</link>
     <description>Recent content in Posts on povcfe&#39;s site</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Tue, 19 Apr 2022 00:00:00 -0400</lastBuildDate><atom:link href="https://povcfe.github.io/post/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Tue, 19 Apr 2022 00:00:00 -0400</lastBuildDate><atom:link href="https://www.povcfe.site/post/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>nginx-ldap-auth之user注入漏洞</title>
-      <link>https://povcfe.github.io/post/nginx-ldap-auth/</link>
+      <link>https://www.povcfe.site/post/nginx-ldap-auth/</link>
       <pubDate>Tue, 19 Apr 2022 00:00:00 -0400</pubDate>
       
-      <guid>https://povcfe.github.io/post/nginx-ldap-auth/</guid>
+      <guid>https://www.povcfe.site/post/nginx-ldap-auth/</guid>
       <description>前段时间, 有人声称发现nginx 0day, 并在NginxDay中持续跟进漏洞上报流程, 虽然漏洞确实存在, 但漏洞只存在于一个示例项目, 且漏洞危害较低. 就目前笔者漏洞分析来看, 该行为多少有点花里胡哨, 下面分析一下这个有些鸡肋的漏洞.
 nginx提供ngx_http_auth_request_module模块用于鉴权, 其功能特点为需要用户自定义实现鉴权api, 并由ngx_http_auth_request_module模块调用
 nginx-ldap-auth结合ldap实现鉴权机制, 是一种用户自定义实现鉴权api的示例项目
@@ -27,10 +27,10 @@ nginx-ldap-auth-daemon.py鉴权分析 从下面鉴权代码可以看出, nginx-l
     
     <item>
       <title>linux内核(5.4.81)---网络模块源码分析</title>
-      <link>https://povcfe.github.io/post/kernel_net/</link>
+      <link>https://www.povcfe.site/post/kernel_net/</link>
       <pubDate>Sun, 28 Mar 2021 00:00:00 -0400</pubDate>
       
-      <guid>https://povcfe.github.io/post/kernel_net/</guid>
+      <guid>https://www.povcfe.site/post/kernel_net/</guid>
       <description>发表于安全客
 1. socket 1.1 sock_create 1.1.1 sock_alloc 1.1.2 inet_create 1.1.2.1 sk_alloc 1.2 sock_map_fd 2. send(运输层) 2.1 import_single_range 2.2 sockfd_lookup_light 2.3 sock_sendmsg 2.4 udp_sendmsg 2.4.1 udp_cmsg_send 2.4.2 TOS 2.4.3 多播/本地广播 2.4.4 检查sock中路由信息是否过期 2.4.5 udp_send_skb 2.4.6 udp_push_pending_frames 3. recv(运输层) 2.1 udp_recvmsg 2.1.1 __skb_recv_udp 2.1.1.1 __skb_try_recv_from_queue 4. IP(网络层) 4.1 ip_cmsg_send 4.2 ip_make_skb 4.2.1 ip_setup_cork 4.2.2 __ip_make_skb 4.3 ip_append_data 4.3.1 __ip_append_data 4.4 ip_send_skb 4.4.1 __ip_local_out 1. socket SOCK_CLOEXEC 和 SOCK_NONBLOCK是2.6.27版本后增加的sock类型:
 SOCK_CLOEXEC 借助文件描述符FD_CLOEXEC 实现子进程运行exec后关闭sock_fd机制
@@ -39,10 +39,10 @@ SOCK_NONBLOCK 借助文件描述符O_NONBLOCK 实现非阻塞IO通信</descripti
     
     <item>
       <title>linux内核(5.4.81)---KASAN</title>
-      <link>https://povcfe.github.io/post/kernel_kasan/</link>
+      <link>https://www.povcfe.site/post/kernel_kasan/</link>
       <pubDate>Sun, 21 Mar 2021 00:00:00 -0400</pubDate>
       
-      <guid>https://povcfe.github.io/post/kernel_kasan/</guid>
+      <guid>https://www.povcfe.site/post/kernel_kasan/</guid>
       <description>发表于安全客
 KASAN 简述 KASAN是内核用于动态检测内存错误的工具, 简单来说, 数据区域可分为两种:可访问区域，不可访问区域(red_zone).KASAN存在影子内存(shadow memory), 他和正常内存的比例是1:8, 即1byte shadow memory可以代表8bytes 正常内存的可访问性.
 128TB(内核正常内存) : 16TB(影子内存) &amp;mdash; Documentation/x86/x86_64/mm.rst x86-64 内存布局显示如下:
@@ -52,10 +52,10 @@ ffffec0000000000 | -20 TB | fffffbffffffffff | 16 TB | KASAN shadow memory 具�
     
     <item>
       <title>一些思考</title>
-      <link>https://povcfe.github.io/post/reprint/</link>
+      <link>https://www.povcfe.site/post/reprint/</link>
       <pubDate>Wed, 27 Jan 2021 00:00:00 -0400</pubDate>
       
-      <guid>https://povcfe.github.io/post/reprint/</guid>
+      <guid>https://www.povcfe.site/post/reprint/</guid>
       <description>一些思考, 转眼间, 入坑安全已经两年, 一些心得
 2017-2018学年(大一) 2017年进入大学, 学习土木工程专业, 如果没有后面不知缘由的对计算机的热爱, 或许我现在正在朝着桥梁设计建造工程师这个方向迈进
 在通识课上, 第一次接触c语言, 由此写出了人生中的第一行hello world
@@ -73,20 +73,20 @@ ffffec0000000000 | -20 TB | fffffbffffffffff | 16 TB | KASAN shadow memory 具�
     
     <item>
       <title>linux内核(5.4.81)---内存管理模块源码分析</title>
-      <link>https://povcfe.github.io/post/kernel_mm/</link>
+      <link>https://www.povcfe.site/post/kernel_mm/</link>
       <pubDate>Tue, 12 Jan 2021 00:00:00 -0400</pubDate>
       
-      <guid>https://povcfe.github.io/post/kernel_mm/</guid>
+      <guid>https://www.povcfe.site/post/kernel_mm/</guid>
       <description>已投稿于安全客
 页表 1.1. 页表查询&amp;ndash;以x86_64下的4级页表举例(硬件) 1.1.1. TLB转换 1.1.2. 页表转换 1.1.3. 页表结构cache转换 1.2. 拓展 1.2.1. 普通页表cache 1.2.2. Huge_Page 1.2.3. 页表标志位 伙伴算法(buddy) alloc_pages源码分析 3.1. alloc_pages_current 3.2. __alloc_pages_nodemask 3.2.1. get_page_from_freelist 3.2.2. _alloc_pages_slowpath _free_pages源码分析 4.1. free_unref_page 4.1.1. free_pcppages_bulk 4.2. __free_pages_ok 4.2.1. __free_one_page slub算法 5.1. 结构体解析 kmem_cache_alloc源码分析 6.1. __slab_alloc 6.1.1. get_freelist kmem_cache_free源码分析 7.1. cache_from_obj 7.2. slab_free_freelist_hook 7.3. do_slab_free 7.3.1. __slab_free 进程vma 8.1. vm_area_struct 结构体 8.2. find_vma(vma查找) 8.2.1. vmacache_find 8.3. insert_vm_struct(vma插入) 8.3.1. find_vma_links 8.3.2. 红黑树规则 缺页中断 9.1. __do_page_fault源码分析 9.</description>
     </item>
     
     <item>
       <title>linux内核(5.6.6)---内核引导</title>
-      <link>https://povcfe.github.io/post/kernel_boot/</link>
+      <link>https://www.povcfe.site/post/kernel_boot/</link>
       <pubDate>Sat, 06 Jun 2020 00:00:00 -0400</pubDate>
       
-      <guid>https://povcfe.github.io/post/kernel_boot/</guid>
+      <guid>https://www.povcfe.site/post/kernel_boot/</guid>
       <description>发表于看雪论坛
 本文详细讲解linux内核的加载过程，参考linux-insiders，并结合linux-5.6.6代码对原文的部分老旧内容做修改
 引导 按下电源开关后, CPU设置寄存器为预定值，程序在实模式下运行，程序首先执行0xfffffff0(映射至ROM)处内容，此处为复位向量，直接跳转至BIOS。
@@ -105,10 +105,10 @@ kernel boot protocol规定，bootloader必须具备协议中规定的头信息
     
     <item>
       <title>linux 内核提权总结(demo&#43;exp分析) -- 任意读写(三)</title>
-      <link>https://povcfe.github.io/post/kernel_rw3/</link>
+      <link>https://www.povcfe.site/post/kernel_rw3/</link>
       <pubDate>Sun, 02 Feb 2020 00:00:00 -0400</pubDate>
       
-      <guid>https://povcfe.github.io/post/kernel_rw3/</guid>
+      <guid>https://www.povcfe.site/post/kernel_rw3/</guid>
       <description>发表于看雪论坛
 hijack_modprobe_path篇 原理同hijack_prctl, 当用户执行错误格式的elf文件时内核调用call_usermodehelper(char *modprobe_path &amp;hellip;)
 修改modprobe后，即可实现root权限任意命令执行
@@ -121,10 +121,10 @@ modprobe_path_addr = 内核基地址+固定偏移
     
     <item>
       <title>linux 内核提权总结(demo&#43;exp分析) -- 任意读写(二)</title>
-      <link>https://povcfe.github.io/post/kernel_rw2/</link>
+      <link>https://www.povcfe.site/post/kernel_rw2/</link>
       <pubDate>Thu, 30 Jan 2020 00:00:00 -0400</pubDate>
       
-      <guid>https://povcfe.github.io/post/kernel_rw2/</guid>
+      <guid>https://www.povcfe.site/post/kernel_rw2/</guid>
       <description>发表于看雪论坛
 hijack_prctl篇 prctl函数: 用户态函数，可用于定制进程参数，非常适合和内核进行交互
 用户态执行prctl函数后触发prctl系统调用 内核接收参数后执行security_task_prctl security_task_prctl执行hook.task_prctl poweroff_work_func函数: 内核函数，执行 run_cmd(poweroff_cmd)，即root权限执行poweroff_cmd
@@ -137,10 +137,10 @@ gdb 执行 p poweroff_cmd，获得poweroff_cmd真实地址
     
     <item>
       <title>linux 内核提权总结(demo&#43;exp分析) -- 任意读写(一)</title>
-      <link>https://povcfe.github.io/post/kernel_rw1/</link>
+      <link>https://www.povcfe.site/post/kernel_rw1/</link>
       <pubDate>Sat, 11 Jan 2020 00:00:00 -0400</pubDate>
       
-      <guid>https://povcfe.github.io/post/kernel_rw1/</guid>
+      <guid>https://www.povcfe.site/post/kernel_rw1/</guid>
       <description>发表于看雪论坛
 cred篇 每个线程在内核中都对应一个线程结构块thread_info
 thread_info中存在task_struct类型结构体
@@ -155,10 +155,10 @@ comm字符串使用prctl函数的PR_SET_NAME自行设置
     
     <item>
       <title>linux 内核提权总结(demo&#43;exp分析) -- ROP(二)</title>
-      <link>https://povcfe.github.io/post/kernel_rop2/</link>
+      <link>https://www.povcfe.site/post/kernel_rop2/</link>
       <pubDate>Mon, 06 Jan 2020 00:00:00 -0400</pubDate>
       
-      <guid>https://povcfe.github.io/post/kernel_rop2/</guid>
+      <guid>https://www.povcfe.site/post/kernel_rop2/</guid>
       <description>发表于看雪论坛
 ret2usr CR4篇 smep: smep是内核的一种保护措施, 使得内核不可执行用户态代码
 内核通过CR4寄存器的第20位来控制smep, 第20位为0时，smep被关闭 攻击流程
@@ -167,10 +167,10 @@ ret2usr CR4篇 smep: smep是内核的一种保护措施, 使得内核不可执�
     
     <item>
       <title>linux 内核提权总结(demo&#43;exp分析) -- ROP(一)</title>
-      <link>https://povcfe.github.io/post/kernel_rop1/</link>
+      <link>https://www.povcfe.site/post/kernel_rop1/</link>
       <pubDate>Wed, 01 Jan 2020 00:00:00 -0400</pubDate>
       
-      <guid>https://povcfe.github.io/post/kernel_rop1/</guid>
+      <guid>https://www.povcfe.site/post/kernel_rop1/</guid>
       <description>发表于看雪论坛
 基础ROP篇(linux 5.0.21) 内核提权与用户态攻击的区别
 攻击流程
@@ -183,10 +183,10 @@ rcS #!/bin/sh mount -t proc none /proc mount -t sysfs none /sys echo /sbin/mdev 
     
     <item>
       <title>glibc2.23 ptmalloc 原理概述</title>
-      <link>https://povcfe.github.io/post/ptmalloc/</link>
+      <link>https://www.povcfe.site/post/ptmalloc/</link>
       <pubDate>Sun, 06 Oct 2019 00:00:00 -0400</pubDate>
       
-      <guid>https://povcfe.github.io/post/ptmalloc/</guid>
+      <guid>https://www.povcfe.site/post/ptmalloc/</guid>
       <description>发表于看雪论坛
 linux用户态下的堆溢出利用即是对ptmalloc2安全机制的绕过，只有深入的了解ptmalloc，才能进行精准的堆溢出攻击
 malloc __libc_malloc(传入参数:size) 判断 是否定义hook函数 ，如果存在则调用hook函数，否则跳到2 void *(*hook) (size_t, const void *) = atomic_forced_read (__malloc_hook); if (__builtin_expect (hook != NULL, 0)) return (*hook)(bytes, RETURN_ADDRESS (0)); 执行arena_get得到空闲分配区 arena_get (ar_ptr, bytes); 调用_int_malloc()获得内存地址 victim = _int_malloc (ar_ptr, bytes); 如果分配失败，ptmalloc会尝试再去寻找一个可用的arena并进行内存分配 if (!victim &amp;amp;&amp;amp; ar_ptr != NULL) { LIBC_PROBE (memory_malloc_retry, 1, bytes); ar_ptr = arena_get_retry (ar_ptr, bytes); victim = _int_malloc (ar_ptr, bytes); } 得到内存地址后解锁分配区 if (ar_ptr != NULL) (void) mutex_unlock (&amp;amp;ar_ptr-&amp;gt;mutex); 如果在上面的步骤中获得非mmap得到的chunk，但是chunk对应的分配区与实际的分配区不相符，则程序终止 assert (!victim || chunk_is_mmapped (mem2chunk (victim)) || ar_ptr == arena_for_chunk (mem2chunk (victim))); _int_malloc errout: 打印错误字符串并 return 判断 size是否大于(unsigned long)(-2*MINSIZE) MINSIZE=chunk的最小大小 ，如果是则return，否则将size转换为chunk_size #define checked_request2size(req, sz) \ if (REQUEST_OUT_OF_RANGE (req)) {	\ __set_errno (ENOMEM);	\ return 0;	\ }	\ (sz) = request2size (req); 判断 前面是否没有获得空闲分配区 如果是则跳到3，否则跳到4 if (__glibc_unlikely (av == NULL)) 调用sysmalloc尝试获得chunk地址，如果得到则调用alloc_perturb 将清理空间数据，return chunk地址 if (__glibc_unlikely (av == NULL)) { void *p = sysmalloc (nb, av); if (p !</description>
@@ -194,10 +194,10 @@ malloc __libc_malloc(传入参数:size) 判断 是否定义hook函数 ，如果�
     
     <item>
       <title>Pwn思维导图</title>
-      <link>https://povcfe.github.io/post/pwn/</link>
+      <link>https://www.povcfe.site/post/pwn/</link>
       <pubDate>Sat, 21 Sep 2019 00:00:00 -0400</pubDate>
       
-      <guid>https://povcfe.github.io/post/pwn/</guid>
+      <guid>https://www.povcfe.site/post/pwn/</guid>
       <description>根据ctf-wiki总结栈溢出, 格式化字符串漏洞, 部分堆溢出利用, 制成如下思维导图
 pwn.pdf</description>
     </item>

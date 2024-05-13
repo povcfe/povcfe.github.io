@@ -75,30 +75,30 @@ malloc __libc_malloc(传入参数:size) 判断 是否定义hook函数 ，如果�
   
   
   
-  <link rel="preload stylesheet" as="style" href="https://povcfe.github.io/main.min.css" />
+  <link rel="preload stylesheet" as="style" href="https://www.povcfe.site/main.min.css" />
 
   
   
   
   
   
-  <link rel="preload" as="image" href="https://povcfe.github.io/theme.png" />
+  <link rel="preload" as="image" href="https://www.povcfe.site/theme.png" />
 
   
   
   
   
-  <link rel="preload" as="image" href="https://povcfe.github.io/avatar.jpg" />
+  <link rel="preload" as="image" href="https://www.povcfe.site/avatar.jpg" />
   
   
 
   
   
-  <link rel="preload" as="image" href="https://povcfe.github.io/twitter.svg" />
+  <link rel="preload" as="image" href="https://www.povcfe.site/twitter.svg" />
   
-  <link rel="preload" as="image" href="https://povcfe.github.io/github.svg" />
+  <link rel="preload" as="image" href="https://www.povcfe.site/github.svg" />
   
-  <link rel="preload" as="image" href="https://povcfe.github.io/rss.svg" />
+  <link rel="preload" as="image" href="https://www.povcfe.site/rss.svg" />
   
   
 
@@ -106,7 +106,7 @@ malloc __libc_malloc(传入参数:size) 判断 是否定义hook函数 ，如果�
   
   <script
     defer
-    src="https://povcfe.github.io/highlight.min.js"
+    src="https://www.povcfe.site/highlight.min.js"
     onload="hljs.initHighlightingOnLoad();"
   ></script>
   
@@ -116,8 +116,8 @@ malloc __libc_malloc(传入参数:size) 判断 是否定义hook函数 ，如果�
   
 
   
-  <link rel="icon" href="https://povcfe.github.io/favicon.ico" />
-  <link rel="apple-touch-icon" href="https://povcfe.github.io/apple-touch-icon.png" />
+  <link rel="icon" href="https://www.povcfe.site/favicon.ico" />
+  <link rel="apple-touch-icon" href="https://www.povcfe.site/apple-touch-icon.png" />
 
   
   <meta name="generator" content="Hugo 0.111.3">
@@ -140,7 +140,7 @@ malloc __libc_malloc(传入参数:size) 判断 是否定义hook函数 ，如果�
 linux用户态下的堆溢出利用即是对ptmalloc2安全机制的绕过，只有深入的了解ptmalloc，才能进行精准的堆溢出攻击
 malloc __libc_malloc(传入参数:size) 判断 是否定义hook函数 ，如果存在则调用hook函数，否则跳到2 void *(*hook) (size_t, const void *) = atomic_forced_read (__malloc_hook); if (__builtin_expect (hook != NULL, 0)) return (*hook)(bytes, RETURN_ADDRESS (0)); 执行arena_get得到空闲分配区 arena_get (ar_ptr, bytes); 调用_int_malloc()获得内存地址 victim = _int_malloc (ar_ptr, bytes); 如果分配失败，ptmalloc会尝试再去寻找一个可用的arena并进行内存分配 if (!victim &amp;&amp; ar_ptr != NULL) { LIBC_PROBE (memory_malloc_retry, 1, bytes); ar_ptr = arena_get_retry (ar_ptr, bytes); victim = _int_malloc (ar_ptr, bytes); } 得到内存地址后解锁分配区 if (ar_ptr != NULL) (void) mutex_unlock (&amp;ar_ptr-&gt;mutex); 如果在上面的步骤中获得非mmap得到的chunk，但是chunk对应的分配区与实际的分配区不相符，则程序终止 assert (!victim || chunk_is_mmapped (mem2chunk (victim)) || ar_ptr == arena_for_chunk (mem2chunk (victim))); _int_malloc errout: 打印错误字符串并 return 判断 size是否大于(unsigned long)(-2*MINSIZE) MINSIZE=chunk的最小大小 ，如果是则return，否则将size转换为chunk_size #define checked_request2size(req, sz) \ if (REQUEST_OUT_OF_RANGE (req)) {	\ __set_errno (ENOMEM);	\ return 0;	\ }	\ (sz) = request2size (req); 判断 前面是否没有获得空闲分配区 如果是则跳到3，否则跳到4 if (__glibc_unlikely (av == NULL)) 调用sysmalloc尝试获得chunk地址，如果得到则调用alloc_perturb 将清理空间数据，return chunk地址 if (__glibc_unlikely (av == NULL)) { void *p = sysmalloc (nb, av); if (p !" />
 <meta property="og:type" content="article" />
-<meta property="og:url" content="https://povcfe.github.io/post/ptmalloc/" /><meta property="article:section" content="post" />
+<meta property="og:url" content="https://www.povcfe.site/post/ptmalloc/" /><meta property="article:section" content="post" />
 <meta property="article:published_time" content="2019-10-06T00:00:00-04:00" />
 <meta property="article:modified_time" content="2019-10-06T00:00:00-04:00" />
 
@@ -154,7 +154,7 @@ malloc __libc_malloc(传入参数:size) 判断 是否定义hook函数 ，如果�
   
   
   
-  <link rel="canonical" href="https://povcfe.github.io/post/ptmalloc/" />
+  <link rel="canonical" href="https://www.povcfe.site/post/ptmalloc/" />
   
   
 </head>
@@ -164,7 +164,7 @@ malloc __libc_malloc(传入参数:size) 判断 是否定义hook函数 ，如果�
   <div class="relative z-50 mr-auto flex items-center">
     <a
       class="-translate-x-[1px] -translate-y-[1px] text-2xl font-semibold"
-      href="https://povcfe.github.io/"
+      href="https://www.povcfe.site/"
       >povcfe&#39;s site</a
     >
     <div
@@ -259,7 +259,7 @@ malloc __libc_malloc(传入参数:size) 判断 是否定义hook函数 ，如果�
       <a
         class="h-8 w-8 text-[0] [background:var(--url)_center_center/cover_no-repeat] lg:h-6 lg:w-6"
         style="--url: url(./rss.svg)"
-        href="https://povcfe.github.io/index.xml"
+        href="https://www.povcfe.site/index.xml"
         target="_blank"
         rel="alternate"
       >
@@ -1000,14 +1000,14 @@ malloc __libc_malloc(传入参数:size) 判断 是否定义hook函数 ，如果�
     
     <a
       class="flex w-1/2 items-center rounded-l-md p-6 pr-3 font-semibold no-underline hover:bg-black/[2%] dark:hover:bg-white/[3%]"
-      href="https://povcfe.github.io/post/kernel_rop1/"
+      href="https://www.povcfe.site/post/kernel_rop1/"
       ><span class="mr-1.5">←</span><span>linux 内核提权总结(demo&#43;exp分析) -- ROP(一)</span></a
     >
     
     
     <a
       class="ml-auto flex w-1/2 items-center justify-end rounded-r-md p-6 pl-3 font-semibold no-underline hover:bg-black/[2%] dark:hover:bg-white/[3%]"
-      href="https://povcfe.github.io/post/pwn/"
+      href="https://www.povcfe.site/post/pwn/"
       ><span>Pwn思维导图</span><span class="ml-1.5">→</span></a
     >
     
@@ -1035,7 +1035,7 @@ malloc __libc_malloc(传入参数:size) 判断 是否定义hook函数 ，如果�
 >
   <div class="mr-auto">
     &copy; 2024
-    <a class="link" href="https://povcfe.github.io/">povcfe&#39;s site</a>
+    <a class="link" href="https://www.povcfe.site/">povcfe&#39;s site</a>
   </div>
   <a class="link mx-6" href="https://gohugo.io/" rel="noopener" target="_blank"
     >Powered by Hugo️️</a
