@@ -1,77 +1,10 @@
-<rss xmlns:atom="http://www.w3.org/2005/Atom" version="2.0">
-    <channel>
-        <title>Tags - 标签 - povcfe&#39;s blog</title>
-        <link>https://povcfe.github.io/tags/</link>
-        <description>Tags - 标签 - povcfe&#39;s blog</description>
-        <generator>Hugo -- gohugo.io</generator><language>zh-CN</language><lastBuildDate>Tue, 19 Apr 2022 03:13:03 -0700</lastBuildDate><atom:link href="https://povcfe.github.io/tags/" rel="self" type="application/rss+xml" /><item>
-    <title>nginx</title>
-    <link>https://povcfe.github.io/tags/nginx/</link>
-    <pubDate>Tue, 19 Apr 2022 03:13:03 -0700</pubDate>
-    <author>作者</author>
-    <guid>https://povcfe.github.io/tags/nginx/</guid>
-    <description><![CDATA[]]></description>
-</item><item>
-    <title>nginx-ldap-auth</title>
-    <link>https://povcfe.github.io/tags/nginx-ldap-auth/</link>
-    <pubDate>Tue, 19 Apr 2022 03:13:03 -0700</pubDate>
-    <author>作者</author>
-    <guid>https://povcfe.github.io/tags/nginx-ldap-auth/</guid>
-    <description><![CDATA[]]></description>
-</item><item>
-    <title>linux kernel</title>
-    <link>https://povcfe.github.io/tags/linux-kernel/</link>
-    <pubDate>Sun, 21 Mar 2021 07:01:39 -0700</pubDate>
-    <author>作者</author>
-    <guid>https://povcfe.github.io/tags/linux-kernel/</guid>
-    <description><![CDATA[]]></description>
-</item><item>
-    <title>源码分析</title>
-    <link>https://povcfe.github.io/tags/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/</link>
-    <pubDate>Sun, 21 Mar 2021 07:01:39 -0700</pubDate>
-    <author>作者</author>
-    <guid>https://povcfe.github.io/tags/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/</guid>
-    <description><![CDATA[]]></description>
-</item><item>
-    <title>网络</title>
-    <link>https://povcfe.github.io/tags/%E7%BD%91%E7%BB%9C/</link>
-    <pubDate>Sun, 21 Mar 2021 07:01:39 -0700</pubDate>
-    <author>作者</author>
-    <guid>https://povcfe.github.io/tags/%E7%BD%91%E7%BB%9C/</guid>
-    <description><![CDATA[]]></description>
-</item><item>
-    <title>安全机制</title>
-    <link>https://povcfe.github.io/tags/%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6/</link>
-    <pubDate>Sun, 21 Mar 2021 06:14:56 -0700</pubDate>
-    <author>作者</author>
-    <guid>https://povcfe.github.io/tags/%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6/</guid>
-    <description><![CDATA[]]></description>
-</item><item>
-    <title>内存管理</title>
-    <link>https://povcfe.github.io/tags/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86/</link>
-    <pubDate>Tue, 12 Jan 2021 03:54:11 -0800</pubDate>
-    <author>作者</author>
-    <guid>https://povcfe.github.io/tags/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86/</guid>
-    <description><![CDATA[]]></description>
-</item><item>
-    <title>boot</title>
-    <link>https://povcfe.github.io/tags/boot/</link>
-    <pubDate>Sat, 06 Jun 2020 10:34:06 -0800</pubDate>
-    <author>作者</author>
-    <guid>https://povcfe.github.io/tags/boot/</guid>
-    <description><![CDATA[]]></description>
-</item><item>
-    <title>exp</title>
-    <link>https://povcfe.github.io/tags/exp/</link>
-    <pubDate>Sun, 02 Feb 2020 10:32:55 -0800</pubDate>
-    <author>作者</author>
-    <guid>https://povcfe.github.io/tags/exp/</guid>
-    <description><![CDATA[]]></description>
-</item><item>
-    <title>rw</title>
-    <link>https://povcfe.github.io/tags/rw/</link>
-    <pubDate>Sun, 02 Feb 2020 10:32:55 -0800</pubDate>
-    <author>作者</author>
-    <guid>https://povcfe.github.io/tags/rw/</guid>
-    <description><![CDATA[]]></description>
-</item></channel>
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Tags on povcfe&#39;s site</title>
+    <link>https://povcfe.github.io/tags/</link>
+    <description>Recent content in Tags on povcfe&#39;s site</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language><atom:link href="https://povcfe.github.io/tags/index.xml" rel="self" type="application/rss+xml" />
+  </channel>
 </rss>

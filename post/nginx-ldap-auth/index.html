@@ -1,0 +1,485 @@
+<!doctype html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<html
+  class="not-ready lg:text-base"
+  style="--bg: #faf8f1"
+  lang="en-us"
+>
+  <head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, shrink-to-fit=no"
+  />
+
+  
+  <title>nginx-ldap-auth之user注入漏洞 - povcfe&#39;s site</title>
+
+  
+  <meta name="theme-color" />
+
+  
+  
+  
+  
+  <meta name="description" content="前段时间, 有人声称发现nginx 0day, 并在NginxDay中持续跟进漏洞上报流程, 虽然漏洞确实存在, 但漏洞只存在于一个示例项目, 且漏洞危害较低. 就目前笔者漏洞分析来看, 该行为多少有点花里胡哨, 下面分析一下这个有些鸡肋的漏洞.
+nginx提供ngx_http_auth_request_module模块用于鉴权, 其功能特点为需要用户自定义实现鉴权api, 并由ngx_http_auth_request_module模块调用
+nginx-ldap-auth结合ldap实现鉴权机制, 是一种用户自定义实现鉴权api的示例项目
+nginx-ldap-auth功能原理 nginx-ldap-auth关键文件
+backend-sample-app.py(处理登录表单), 将user:passwd base64编码后设置Cookie nginx-ldap-auth-daemon.py(结合ldap进行鉴权), 解析http报文中的Cookie/Authorization(有Cookie的情况下鉴权以Cookie为主) ngx_http_auth_request_module模块常用路由
+nginx直接向nginx-ldap-auth-daemon.py对应url发起请求, 此时未设置Cookie/Authorization返回401
+nginx转发请求至backend-sample-app.py对应url处理登录表单, 并设置Cookie
+nginx重定向请求至nginx-ldap-auth-daemon.py对应url, 此时存在Cookie, 解析user, passwd, 调用ldap实现鉴权, 成功则返回200
+nginx-ldap-auth-daemon.py鉴权分析 从下面鉴权代码可以看出, nginx-ldap-auth-daemon.py使用searchfilter过滤ldap结果, 查找目标登录用户
+// ctx[&#39;template&#39;]默认对应: &#39;template&#39;: (&#39;X-Ldap-Template&#39;, &#39;(cn=%(username)s)&#39;), // ctx[&#39;user&#39;], ctx[&#39;pass&#39;]: 从Cookie中解析出的user, passwd searchfilter = ctx[&#39;template&#39;] % { &#39;username&#39;: ctx[&#39;user&#39;] } ... // 默认使用(cn=username)这种模式在ldap中查找用户 results = ldap_obj.search_s(ctx[&#39;basedn&#39;], ldap.SCOPE_SUBTREE, searchfilter, [&#39;objectclass&#39;], 1) user_entry = results[0] ldap_dn = user_entry[0] ldap_obj." />
+  <meta name="author" content="povcfe" />
+  
+
+  
+  
+  
+  
+  
+  
+  <link rel="preload stylesheet" as="style" href="https://povcfe.github.io/main.min.css" />
+
+  
+  
+  
+  
+  
+  <link rel="preload" as="image" href="https://povcfe.github.io/theme.png" />
+
+  
+  
+  
+  
+  <link rel="preload" as="image" href="https://povcfe.github.io/avatar.jpg" />
+  
+  
+
+  
+  
+  <link rel="preload" as="image" href="https://povcfe.github.io/twitter.svg" />
+  
+  <link rel="preload" as="image" href="https://povcfe.github.io/github.svg" />
+  
+  <link rel="preload" as="image" href="https://povcfe.github.io/rss.svg" />
+  
+  
+
+  
+  
+  <script
+    defer
+    src="https://povcfe.github.io/highlight.min.js"
+    onload="hljs.initHighlightingOnLoad();"
+  ></script>
+  
+
+  
+  
+  
+
+  
+  <link rel="icon" href="https://povcfe.github.io/favicon.ico" />
+  <link rel="apple-touch-icon" href="https://povcfe.github.io/apple-touch-icon.png" />
+
+  
+  <meta name="generator" content="Hugo 0.111.3">
+
+  
+  
+  
+  
+  
+  <meta itemprop="name" content="nginx-ldap-auth之user注入漏洞">
+<meta itemprop="description" content="前段时间, 有人声称发现nginx 0day, 并在NginxDay中持续跟进漏洞上报流程, 虽然漏洞确实存在, 但漏洞只存在于一个示例项目, 且漏洞危害较低. 就目前笔者漏洞分析来看, 该行为多少有点花里胡哨, 下面分析一下这个有些鸡肋的漏洞.
+nginx提供ngx_http_auth_request_module模块用于鉴权, 其功能特点为需要用户自定义实现鉴权api, 并由ngx_http_auth_request_module模块调用
+nginx-ldap-auth结合ldap实现鉴权机制, 是一种用户自定义实现鉴权api的示例项目
+nginx-ldap-auth功能原理 nginx-ldap-auth关键文件
+backend-sample-app.py(处理登录表单), 将user:passwd base64编码后设置Cookie nginx-ldap-auth-daemon.py(结合ldap进行鉴权), 解析http报文中的Cookie/Authorization(有Cookie的情况下鉴权以Cookie为主) ngx_http_auth_request_module模块常用路由
+nginx直接向nginx-ldap-auth-daemon.py对应url发起请求, 此时未设置Cookie/Authorization返回401
+nginx转发请求至backend-sample-app.py对应url处理登录表单, 并设置Cookie
+nginx重定向请求至nginx-ldap-auth-daemon.py对应url, 此时存在Cookie, 解析user, passwd, 调用ldap实现鉴权, 成功则返回200
+nginx-ldap-auth-daemon.py鉴权分析 从下面鉴权代码可以看出, nginx-ldap-auth-daemon.py使用searchfilter过滤ldap结果, 查找目标登录用户
+// ctx[&#39;template&#39;]默认对应: &#39;template&#39;: (&#39;X-Ldap-Template&#39;, &#39;(cn=%(username)s)&#39;), // ctx[&#39;user&#39;], ctx[&#39;pass&#39;]: 从Cookie中解析出的user, passwd searchfilter = ctx[&#39;template&#39;] % { &#39;username&#39;: ctx[&#39;user&#39;] } ... // 默认使用(cn=username)这种模式在ldap中查找用户 results = ldap_obj.search_s(ctx[&#39;basedn&#39;], ldap.SCOPE_SUBTREE, searchfilter, [&#39;objectclass&#39;], 1) user_entry = results[0] ldap_dn = user_entry[0] ldap_obj."><meta itemprop="datePublished" content="2022-04-19T00:00:00-04:00" />
+<meta itemprop="dateModified" content="2022-04-19T00:00:00-04:00" />
+<meta itemprop="wordCount" content="175">
+<meta itemprop="keywords" content="" />
+  
+  <meta property="og:title" content="nginx-ldap-auth之user注入漏洞" />
+<meta property="og:description" content="前段时间, 有人声称发现nginx 0day, 并在NginxDay中持续跟进漏洞上报流程, 虽然漏洞确实存在, 但漏洞只存在于一个示例项目, 且漏洞危害较低. 就目前笔者漏洞分析来看, 该行为多少有点花里胡哨, 下面分析一下这个有些鸡肋的漏洞.
+nginx提供ngx_http_auth_request_module模块用于鉴权, 其功能特点为需要用户自定义实现鉴权api, 并由ngx_http_auth_request_module模块调用
+nginx-ldap-auth结合ldap实现鉴权机制, 是一种用户自定义实现鉴权api的示例项目
+nginx-ldap-auth功能原理 nginx-ldap-auth关键文件
+backend-sample-app.py(处理登录表单), 将user:passwd base64编码后设置Cookie nginx-ldap-auth-daemon.py(结合ldap进行鉴权), 解析http报文中的Cookie/Authorization(有Cookie的情况下鉴权以Cookie为主) ngx_http_auth_request_module模块常用路由
+nginx直接向nginx-ldap-auth-daemon.py对应url发起请求, 此时未设置Cookie/Authorization返回401
+nginx转发请求至backend-sample-app.py对应url处理登录表单, 并设置Cookie
+nginx重定向请求至nginx-ldap-auth-daemon.py对应url, 此时存在Cookie, 解析user, passwd, 调用ldap实现鉴权, 成功则返回200
+nginx-ldap-auth-daemon.py鉴权分析 从下面鉴权代码可以看出, nginx-ldap-auth-daemon.py使用searchfilter过滤ldap结果, 查找目标登录用户
+// ctx[&#39;template&#39;]默认对应: &#39;template&#39;: (&#39;X-Ldap-Template&#39;, &#39;(cn=%(username)s)&#39;), // ctx[&#39;user&#39;], ctx[&#39;pass&#39;]: 从Cookie中解析出的user, passwd searchfilter = ctx[&#39;template&#39;] % { &#39;username&#39;: ctx[&#39;user&#39;] } ... // 默认使用(cn=username)这种模式在ldap中查找用户 results = ldap_obj.search_s(ctx[&#39;basedn&#39;], ldap.SCOPE_SUBTREE, searchfilter, [&#39;objectclass&#39;], 1) user_entry = results[0] ldap_dn = user_entry[0] ldap_obj." />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://povcfe.github.io/post/nginx-ldap-auth/" /><meta property="article:section" content="post" />
+<meta property="article:published_time" content="2022-04-19T00:00:00-04:00" />
+<meta property="article:modified_time" content="2022-04-19T00:00:00-04:00" />
+
+  
+  <meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="nginx-ldap-auth之user注入漏洞"/>
+<meta name="twitter:description" content="前段时间, 有人声称发现nginx 0day, 并在NginxDay中持续跟进漏洞上报流程, 虽然漏洞确实存在, 但漏洞只存在于一个示例项目, 且漏洞危害较低. 就目前笔者漏洞分析来看, 该行为多少有点花里胡哨, 下面分析一下这个有些鸡肋的漏洞.
+nginx提供ngx_http_auth_request_module模块用于鉴权, 其功能特点为需要用户自定义实现鉴权api, 并由ngx_http_auth_request_module模块调用
+nginx-ldap-auth结合ldap实现鉴权机制, 是一种用户自定义实现鉴权api的示例项目
+nginx-ldap-auth功能原理 nginx-ldap-auth关键文件
+backend-sample-app.py(处理登录表单), 将user:passwd base64编码后设置Cookie nginx-ldap-auth-daemon.py(结合ldap进行鉴权), 解析http报文中的Cookie/Authorization(有Cookie的情况下鉴权以Cookie为主) ngx_http_auth_request_module模块常用路由
+nginx直接向nginx-ldap-auth-daemon.py对应url发起请求, 此时未设置Cookie/Authorization返回401
+nginx转发请求至backend-sample-app.py对应url处理登录表单, 并设置Cookie
+nginx重定向请求至nginx-ldap-auth-daemon.py对应url, 此时存在Cookie, 解析user, passwd, 调用ldap实现鉴权, 成功则返回200
+nginx-ldap-auth-daemon.py鉴权分析 从下面鉴权代码可以看出, nginx-ldap-auth-daemon.py使用searchfilter过滤ldap结果, 查找目标登录用户
+// ctx[&#39;template&#39;]默认对应: &#39;template&#39;: (&#39;X-Ldap-Template&#39;, &#39;(cn=%(username)s)&#39;), // ctx[&#39;user&#39;], ctx[&#39;pass&#39;]: 从Cookie中解析出的user, passwd searchfilter = ctx[&#39;template&#39;] % { &#39;username&#39;: ctx[&#39;user&#39;] } ... // 默认使用(cn=username)这种模式在ldap中查找用户 results = ldap_obj.search_s(ctx[&#39;basedn&#39;], ldap.SCOPE_SUBTREE, searchfilter, [&#39;objectclass&#39;], 1) user_entry = results[0] ldap_dn = user_entry[0] ldap_obj."/>
+
+  
+  
+  
+  <link rel="canonical" href="https://povcfe.github.io/post/nginx-ldap-auth/" />
+  
+  
+</head>
+
+  <body class="text-black duration-200 ease-out dark:text-white">
+    <header class="mx-auto flex h-[4.5rem] max-w-3xl px-8 lg:justify-center">
+  <div class="relative z-50 mr-auto flex items-center">
+    <a
+      class="-translate-x-[1px] -translate-y-[1px] text-2xl font-semibold"
+      href="https://povcfe.github.io/"
+      >povcfe&#39;s site</a
+    >
+    <div
+      class="btn-dark text-[0] ml-4 h-6 w-6 shrink-0 cursor-pointer [background:url(./theme.png)_left_center/_auto_theme('spacing.6')_no-repeat] [transition:_background-position_0.4s_steps(5)] dark:[background-position:right]"
+      role="button"
+      aria-label="Dark"
+    ></div>
+  </div>
+
+  <div
+    class="btn-menu relative z-50 -mr-8 flex h-[4.5rem] w-[5rem] shrink-0 cursor-pointer flex-col items-center justify-center gap-2.5 lg:hidden"
+    role="button"
+    aria-label="Menu"
+  ></div>
+
+  
+
+  <script>
+    
+    const htmlClass = document.documentElement.classList;
+    setTimeout(() => {
+      htmlClass.remove('not-ready');
+    }, 10);
+
+    
+    const btnMenu = document.querySelector('.btn-menu');
+    btnMenu.addEventListener('click', () => {
+      htmlClass.toggle('open');
+    });
+
+    
+    const metaTheme = document.querySelector('meta[name="theme-color"]');
+    const lightBg = '#faf8f1'.replace(/"/g, '');
+    const setDark = (isDark) => {
+      metaTheme.setAttribute('content', isDark ? '#000' : lightBg);
+      htmlClass[isDark ? 'add' : 'remove']('dark');
+      localStorage.setItem('dark', isDark);
+    };
+
+    
+    const darkScheme = window.matchMedia('(prefers-color-scheme: dark)');
+    if (htmlClass.contains('dark')) {
+      setDark(true);
+    } else {
+      const darkVal = localStorage.getItem('dark');
+      setDark(darkVal ? darkVal === 'true' : darkScheme.matches);
+    }
+
+    
+    darkScheme.addEventListener('change', (event) => {
+      setDark(event.matches);
+    });
+
+    
+    const btnDark = document.querySelector('.btn-dark');
+    btnDark.addEventListener('click', () => {
+      setDark(localStorage.getItem('dark') !== 'true');
+    });
+  </script>
+
+  <div
+    class="nav-wrapper fixed inset-x-0 top-full z-40 flex h-full select-none flex-col justify-center pb-16 duration-200 dark:bg-black lg:static lg:h-auto lg:flex-row lg:!bg-transparent lg:pb-0 lg:transition-none"
+  >
+    
+    
+
+    
+    <nav
+      class="mt-12 flex justify-center space-x-10 dark:invert lg:ml-12 lg:mt-0 lg:items-center lg:space-x-6"
+    >
+      
+      <a
+        class="h-8 w-8 text-[0] [background:var(--url)_center_center/cover_no-repeat] lg:h-6 lg:w-6"
+        style="--url: url(./twitter.svg)"
+        href="https://twitter.com/povcfe"
+        target="_blank"
+        rel="me"
+      >
+        twitter
+      </a>
+      
+      <a
+        class="h-8 w-8 text-[0] [background:var(--url)_center_center/cover_no-repeat] lg:h-6 lg:w-6"
+        style="--url: url(./github.svg)"
+        href="https://github.com/povcfe"
+        target="_blank"
+        rel="me"
+      >
+        github
+      </a>
+      
+      <a
+        class="h-8 w-8 text-[0] [background:var(--url)_center_center/cover_no-repeat] lg:h-6 lg:w-6"
+        style="--url: url(./rss.svg)"
+        href="https://povcfe.github.io/index.xml"
+        target="_blank"
+        rel="alternate"
+      >
+        rss
+      </a>
+      
+    </nav>
+    
+  </div>
+</header>
+
+
+    <main
+      class="prose prose-neutral relative mx-auto min-h-[calc(100%-9rem)] max-w-3xl px-8 pb-16 pt-12 dark:prose-invert"
+    >
+      
+
+<article>
+  <header class="mb-16">
+    <h1 class="!my-0 pb-2.5">nginx-ldap-auth之user注入漏洞</h1>
+
+    
+    <div class="text-sm antialiased opacity-60">
+      
+      <time>Apr 19, 2022</time>
+      
+      
+      
+      
+    </div>
+    
+  </header>
+
+  <section><blockquote>
+<p>前段时间, 有人声称发现nginx 0day, 并在<a href="https://github.com/AgainstTheWest/NginxDay">NginxDay</a>中持续跟进漏洞上报流程, 虽然漏洞确实存在, 但漏洞只存在于一个示例项目, 且漏洞危害较低. 就目前笔者漏洞分析来看, 该行为多少有点花里胡哨, 下面分析一下这个有些鸡肋的漏洞.</p>
+</blockquote>
+<ul>
+<li>
+<p>nginx提供ngx_http_auth_request_module模块用于鉴权, 其功能特点为需要用户自定义实现鉴权api, 并由ngx_http_auth_request_module模块调用</p>
+</li>
+<li>
+<p>nginx-ldap-auth结合ldap实现鉴权机制, 是一种用户自定义实现鉴权api的示例项目</p>
+</li>
+</ul>
+<h3 id="nginx-ldap-auth功能原理">nginx-ldap-auth功能原理</h3>
+<ul>
+<li>
+<p>nginx-ldap-auth关键文件</p>
+<ul>
+<li>backend-sample-app.py(处理登录表单), 将user:passwd base64编码后设置Cookie</li>
+<li>nginx-ldap-auth-daemon.py(结合ldap进行鉴权), 解析http报文中的Cookie/Authorization(有Cookie的情况下鉴权以Cookie为主)</li>
+</ul>
+</li>
+<li>
+<p>ngx_http_auth_request_module模块常用路由</p>
+<ol>
+<li>
+<p>nginx直接向nginx-ldap-auth-daemon.py对应url发起请求, 此时未设置Cookie/Authorization返回401</p>
+</li>
+<li>
+<p>nginx转发请求至backend-sample-app.py对应url处理登录表单, 并设置Cookie</p>
+</li>
+<li>
+<p>nginx重定向请求至nginx-ldap-auth-daemon.py对应url, 此时存在Cookie, 解析user, passwd, 调用ldap实现鉴权, 成功则返回200</p>
+</li>
+</ol>
+</li>
+</ul>
+<h3 id="nginx-ldap-auth-daemonpy鉴权分析">nginx-ldap-auth-daemon.py鉴权分析</h3>
+<p>从下面鉴权代码可以看出, nginx-ldap-auth-daemon.py使用searchfilter过滤ldap结果, 查找目标登录用户</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-py" data-lang="py"><span style="display:flex;"><span><span style="color:#f92672">//</span> ctx[<span style="color:#e6db74">&#39;template&#39;</span>]默认对应: <span style="color:#e6db74">&#39;template&#39;</span>: (<span style="color:#e6db74">&#39;X-Ldap-Template&#39;</span>, <span style="color:#e6db74">&#39;(cn=</span><span style="color:#e6db74">%(username)s</span><span style="color:#e6db74">)&#39;</span>),
+</span></span><span style="display:flex;"><span><span style="color:#f92672">//</span> ctx[<span style="color:#e6db74">&#39;user&#39;</span>], ctx[<span style="color:#e6db74">&#39;pass&#39;</span>]: 从Cookie中解析出的user, passwd
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>searchfilter <span style="color:#f92672">=</span> ctx[<span style="color:#e6db74">&#39;template&#39;</span>] <span style="color:#f92672">%</span> { <span style="color:#e6db74">&#39;username&#39;</span>: ctx[<span style="color:#e6db74">&#39;user&#39;</span>] }
+</span></span><span style="display:flex;"><span><span style="color:#f92672">...</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">//</span> 默认使用(cn<span style="color:#f92672">=</span>username)这种模式在ldap中查找用户
+</span></span><span style="display:flex;"><span>results <span style="color:#f92672">=</span> ldap_obj<span style="color:#f92672">.</span>search_s(ctx[<span style="color:#e6db74">&#39;basedn&#39;</span>], ldap<span style="color:#f92672">.</span>SCOPE_SUBTREE,
+</span></span><span style="display:flex;"><span>                                          searchfilter, [<span style="color:#e6db74">&#39;objectclass&#39;</span>], <span style="color:#ae81ff">1</span>)
+</span></span><span style="display:flex;"><span>user_entry <span style="color:#f92672">=</span> results[<span style="color:#ae81ff">0</span>]
+</span></span><span style="display:flex;"><span>ldap_dn <span style="color:#f92672">=</span> user_entry[<span style="color:#ae81ff">0</span>]
+</span></span><span style="display:flex;"><span>ldap_obj<span style="color:#f92672">.</span>bind_s(ldap_dn, ctx[<span style="color:#e6db74">&#39;pass&#39;</span>], ldap<span style="color:#f92672">.</span>AUTH_SIMPLE)
+</span></span></code></pre></div><h3 id="漏洞点">漏洞点</h3>
+<ul>
+<li>ctx[&lsquo;user&rsquo;] 没有过滤字符, 直接使用http报文提供的数据</li>
+</ul>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-py" data-lang="py"><span style="display:flex;"><span>auth_header <span style="color:#f92672">=</span> self<span style="color:#f92672">.</span>headers<span style="color:#f92672">.</span>get(<span style="color:#e6db74">&#39;Authorization&#39;</span>)
+</span></span><span style="display:flex;"><span>auth_cookie <span style="color:#f92672">=</span> self<span style="color:#f92672">.</span>get_cookie(ctx[<span style="color:#e6db74">&#39;cookiename&#39;</span>])
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">if</span> auth_cookie <span style="color:#f92672">!=</span> <span style="color:#66d9ef">None</span> <span style="color:#f92672">and</span> auth_cookie <span style="color:#f92672">!=</span> <span style="color:#e6db74">&#39;&#39;</span>:
+</span></span><span style="display:flex;"><span>    auth_header <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;Basic &#34;</span> <span style="color:#f92672">+</span> auth_cookie
+</span></span><span style="display:flex;"><span><span style="color:#f92672">...</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>auth_decoded <span style="color:#f92672">=</span> base64<span style="color:#f92672">.</span>b64decode(auth_header[<span style="color:#ae81ff">6</span>:])
+</span></span><span style="display:flex;"><span><span style="color:#f92672">...</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>user, passwd <span style="color:#f92672">=</span> auth_decoded<span style="color:#f92672">.</span>split(<span style="color:#e6db74">&#39;:&#39;</span>, <span style="color:#ae81ff">1</span>)
+</span></span><span style="display:flex;"><span><span style="color:#f92672">...</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">//</span> 漏洞点
+</span></span><span style="display:flex;"><span>ctx[<span style="color:#e6db74">&#39;user&#39;</span>] <span style="color:#f92672">=</span> user
+</span></span><span style="display:flex;"><span>ctx[<span style="color:#e6db74">&#39;pass&#39;</span>] <span style="color:#f92672">=</span> passwd
+</span></span></code></pre></div><ul>
+<li>
+<p>ctx[&rsquo;template&rsquo;] 可以被管理员自定义设置, issue提供了一种情况如下:</p>
+<ul>
+<li>
+<p>X-Ldap-Template: (|(&amp;(memberOf=x)(cn=%(username)s))(&amp;(memberOf=y)(cn=%(username)s)))</p>
+</li>
+<li>
+<p>解释上诉规则: |代表或, &amp;代表与, ()括号内容代表|/&amp;的作用区域, 那么上诉规则就可以解析为查找在x组内的username或y组内的username</p>
+</li>
+<li>
+<p>searchfilter = ctx[&rsquo;template&rsquo;] % { &lsquo;username&rsquo;: ctx[&lsquo;user&rsquo;] }, 见nginx-ldap-auth-daemon.py鉴权分析</p>
+</li>
+</ul>
+</li>
+<li>
+<p>结合ctx[&rsquo;template&rsquo;], ctx[&lsquo;user&rsquo;]的特点, 就可以实现ctx[&lsquo;user&rsquo;]注入</p>
+</li>
+</ul>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-py" data-lang="py"><span style="display:flex;"><span><span style="color:#f92672">&gt;&gt;&gt;</span> template<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;(|(&amp;(memberOf=x)(cn=</span><span style="color:#e6db74">%(username)s</span><span style="color:#e6db74">))(&amp;(memberOf=y)(cn=</span><span style="color:#e6db74">%(username)s</span><span style="color:#e6db74">)))&#34;</span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">&gt;&gt;&gt;</span> template<span style="color:#f92672">%</span>{<span style="color:#e6db74">&#34;username&#34;</span>: <span style="color:#e6db74">&#34;hack&#34;</span>}
+</span></span><span style="display:flex;"><span><span style="color:#e6db74">&#39;(|(&amp;(memberOf=x)(cn=hack))(&amp;(memberOf=y)(cn=hack)))&#39;</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">//</span> 如果ctx[<span style="color:#e6db74">&#39;user&#39;</span>]<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;x))((cn=hack&#34;</span>, 那么过滤规则就变成查找在x组内的x或hack或y组内的hack
+</span></span><span style="display:flex;"><span><span style="color:#f92672">&gt;&gt;&gt;</span> template<span style="color:#f92672">%</span>{<span style="color:#e6db74">&#34;username&#34;</span>: <span style="color:#e6db74">&#34;x))((cn=hack&#34;</span>}
+</span></span><span style="display:flex;"><span><span style="color:#e6db74">&#39;(|(&amp;(memberOf=x)(cn=x))((cn=hack))(&amp;(memberOf=y)(cn=x))((cn=hack)))&#39;</span>
+</span></span></code></pre></div><h3 id="漏洞效果">漏洞效果</h3>
+<p>目前来看只能通过user注入, 消除一些认证条件(比如特定组), 比较鸡肋. 当然不排除ldap由其他trick, 本二进制狗不知道=.=</p>
+<h3 id="补丁分析">补丁分析</h3>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-diff" data-lang="diff"><span style="display:flex;"><span><span style="color:#75715e">@@ -88,9 +96,9 @@ def do_GET(self):
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>...
+</span></span><span style="display:flex;"><span>ctx[&#39;pass&#39;] = passwd
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>// 过滤user字符
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">+ ctx[&#39;user&#39;] = ldap.filter.escape_filter_chars(user)
+</span></span></span></code></pre></div></section>
+
+  
+  
+
+  
+  
+  
+  
+  <nav class="mt-24 flex rounded-lg bg-black/[3%] text-lg dark:bg-white/[8%]">
+    
+    
+    <a
+      class="ml-auto flex w-1/2 items-center justify-end rounded-r-md p-6 pl-3 font-semibold no-underline hover:bg-black/[2%] dark:hover:bg-white/[3%]"
+      href="https://povcfe.github.io/post/kernel_net/"
+      ><span>linux内核(5.4.81)---网络模块源码分析</span><span class="ml-1.5">→</span></a
+    >
+    
+  </nav>
+  
+  
+
+  
+  
+
+  
+  
+
+  
+
+
+  
+</article>
+
+
+    </main>
+
+    <footer
+  class="opaco mx-auto flex h-[4.5rem] max-w-3xl items-center px-8 text-[0.9em] opacity-60"
+>
+  <div class="mr-auto">
+    &copy; 2024
+    <a class="link" href="https://povcfe.github.io/">povcfe&#39;s site</a>
+  </div>
+  <a class="link mx-6" href="https://gohugo.io/" rel="noopener" target="_blank"
+    >Powered by Hugo️️</a
+  >️
+  <a
+    class="link"
+    href="https://github.com/nanxiaobei/hugo-paper"
+    rel="noopener"
+    target="_blank"
+    >✎ Paper</a
+  >
+</footer>
+
+  </body>
+</html>

