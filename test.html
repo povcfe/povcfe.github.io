@@ -2,89 +2,67 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>获取应用版本</title>
+    <title>Raw Device Info Response</title>
     <style>
-        body { padding: 20px; font-family: Arial; }
-        button { padding: 10px 20px; background: #07c; color: white; border: none; border-radius: 4px; }
-        #result { margin-top: 20px; padding: 15px; border: 1px solid #ddd; }
+        pre {
+            margin: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            background: #f5f5f5;
+            white-space: pre-wrap;
+            max-width: 600px;
+        }
+        button {
+            padding: 8px 20px;
+            background: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            margin: 20px;
+        }
     </style>
 </head>
 <body>
-    <button onclick="getAppVersion()">获取版本号</button>
-    <div id="result"></div>
+    <button onclick="getRawDeviceInfo()">获取设备信息原始响应</button>
+    <pre id="raw-output">点击按钮查看原始响应</pre>
 
     <script>
-        // 初始化回调系统
+        // 原生回调入口 (完全原始输出)
         window.jsb = {
-            handleMessage: function(response) {
-                const res = JSON.parse(response);
-                if(res.callbackId) {
-                    const callback = window.callbacks[res.callbackId];
-                    if(callback) {
-                        callback(res.data);
-                        delete window.callbacks[res.callbackId];
-                    }
-                }
+            handleMessage: function(rawJsonString) {
+                document.getElementById('raw-output').textContent = 
+                    "【原始响应】\n" + rawJsonString;
             }
         };
 
-        // 回调ID生成器
-        window.callbacks = {};
-        let callbackId = 0;
-
-        function invokeJSBridge(apiName, params = {}) {
-            return new Promise((resolve, reject) => {
-                const currentId = `cb_${Date.now()}_${callbackId++}`;
-                
-                window.callbacks[currentId] = (response) => {
-                    if(response.error) {
-                        reject(response.error);
-                    } else {
-                        resolve(response);
-                    }
-                };
-
-                try {
-                    // 通过JsRuntime接口调用原生方法
-                    window.JsRuntime.invoke(
-                        apiName,
-                        JSON.stringify(params),
-                        currentId
-                    );
-                    
-                    // 超时处理
-                    setTimeout(() => {
-                        if(window.callbacks[currentId]) {
-                            reject({code: 408, message: '请求超时'});
-                            delete window.callbacks[currentId];
-                        }
-                    }, 5000);
-                } catch(e) {
-                    reject({code: 500, message: '桥接不可用'});
-                }
-            });
-        }
-
-        async function getAppVersion() {
-            const resultDiv = document.getElementById('result');
-            resultDiv.innerHTML = '请求中...';
-            resultDiv.style.color = '#666';
-
+        // 真实调用逻辑
+        function getRawDeviceInfo() {
+            const callbackId = `dev_${Date.now()}`;
+            
             try {
-                const response = await invokeJSBridge('getAppVersion');
+                // 实际JSBridge调用
+                window.JsRuntime.invoke(
+                    'getDeviceInfo',      // 方法名
+                    '{}',                 // 空参数
+                    callbackId            // 唯一回调ID
+                );
                 
-                // 根据Java代码实现，成功返回格式：
-                // {"data":{"version":"x.x.x"},"errCode":0}
-                if(response.errCode === 0) {
-                    resultDiv.innerHTML = `✅ 当前版本：${response.data.version}`;
-                    resultDiv.style.color = 'green';
-                } else {
-                    throw new Error(`错误码：${response.errCode}`);
-                }
-            } catch(error) {
-                resultDiv.innerHTML = `❌ 失败：${error.message || error}`;
-                resultDiv.style.color = 'red';
+                // 超时处理（5秒）
+                setTimeout(() => {
+                    document.getElementById('raw-output').textContent = 
+                        `【超时响应】\n${JSON.stringify({
+                            callbackId: callbackId,
+                            errCode: 408,
+                            message: "TIMEOUT"
+                        }, null, 2)}`;
+                }, 5000);
+
+            } catch (error) {
+                document.getElementById('raw-output').textContent = 
+                    `【错误响应】\n${JSON.stringify({
+                        error: error.toString(),
+                        timestamp: Date.now()
+                    }, null, 2)}`;
             }
         }
     </script>
