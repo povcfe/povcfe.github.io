@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <meta charset="utf-8">
     <title>Raw Device Info Response</title>
@@ -12,6 +13,7 @@
             white-space: pre-wrap;
             max-width: 600px;
         }
+
         button {
             padding: 8px 20px;
             background: #007bff;
@@ -22,6 +24,7 @@
         }
     </style>
 </head>
+
 <body>
     <button onclick="getRawDeviceInfo()">获取设备信息原始响应</button>
     <pre id="raw-output">点击按钮查看原始响应</pre>
@@ -29,16 +32,26 @@
     <script>
         // 原生回调入口 (完全原始输出)
         window.jsb = {
-            handleMessage: function(rawJsonString) {
-                document.getElementById('raw-output').textContent = 
-                    "【原始响应】\n" + rawJsonString;
+            handleMessage: function (response) {
+                const output = document.getElementById('raw-output');
+
+                try {
+                    // 强制转换为JSON字符串（双重保障）
+                    const rawString = typeof response === 'string'
+                        ? response
+                        : JSON.stringify(response, null, 2);
+
+                    output.textContent = "【原始响应】\n" + rawString;
+                } catch (e) {
+                    output.textContent = "【解析失败】\n" + e.stack;
+                }
             }
         };
 
         // 真实调用逻辑
         function getRawDeviceInfo() {
             const callbackId = `dev_${Date.now()}`;
-            
+
             try {
                 // 实际JSBridge调用
                 window.JsRuntime.invoke(
@@ -46,19 +59,19 @@
                     '{}',                 // 空参数
                     callbackId            // 唯一回调ID
                 );
-                
+
                 // 超时处理（5秒）
-                setTimeout(() => {
-                    document.getElementById('raw-output').textContent = 
-                        `【超时响应】\n${JSON.stringify({
-                            callbackId: callbackId,
-                            errCode: 408,
-                            message: "TIMEOUT"
-                        }, null, 2)}`;
-                }, 5000);
+                // setTimeout(() => {
+                //     document.getElementById('raw-output').textContent = 
+                //         `【超时响应】\n${JSON.stringify({
+                //             callbackId: callbackId,
+                //             errCode: 408,
+                //             message: "TIMEOUT"
+                //         }, null, 2)}`;
+                // }, 5000);
 
             } catch (error) {
-                document.getElementById('raw-output').textContent = 
+                document.getElementById('raw-output').textContent =
                     `【错误响应】\n${JSON.stringify({
                         error: error.toString(),
                         timestamp: Date.now()
@@ -67,4 +80,5 @@
         }
     </script>
 </body>
+
 </html>
