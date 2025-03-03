@@ -59,8 +59,7 @@
 <body>
     <button onclick="getUserInfo()">getUserInfo</button>
     <button onclick="getAppVersion()">getAppVersion</button>
-    <button onclick="useCamera()">useCamera</button>
-    <button onclick="addPhoneCalendar()">addPhoneCalendar</button>
+    <button onclick="getDeviceInfo()">getDeviceInfo</button>
     <pre id="raw-output">test</pre>
 
     <script>
@@ -113,51 +112,17 @@
             }
         }
 
-        function useCamera() {
+        function getDeviceInfo() {
             const output = document.getElementById('raw-output');
             output.textContent = "请求发送中...";
 
             try {
                 const callbackId = `dev_${Date.now()}`;
-                window.JsRuntime.invoke(
-                    'useCamera',
-                    JSON.stringify({
-                        enableCrop: true,
-                        aspectRatio: [1, 1],
-                        quality: 80
-                    }),
-                    callbackId
-                );
+                window.JsRuntime.invoke('getDeviceInfo', '{}', callbackId);
             } catch (error) {
                 output.textContent = `请求失败: ${error.message}`;
             }
-        }
-
-        function addPhoneCalendar() {
-            const output = document.getElementById('raw-output');
-            output.textContent = "请求发送中...";
-
-            try {
-                const callbackId = `dev_${Date.now()}`;
-                const eventData = {
-                    title: "团队会议",                    // 必须：事件标题
-                    description: "项目进度讨论",             // 可选：事件描述
-                    startTime: Math.floor(Date.now() / 1000), // 事件开始时间（当前时间）
-                    endTime: Math.floor(Date.now() / 1000 + 3600), // 事件结束时间（1小时后）
-                    alarm: true,                         // 是否设置提醒（默认 true）
-                    alarmOffset: 15                      // 提醒提前分钟数（默认 15）
-                };
-
-                // 调用 Native API
-                window.JsRuntime.invoke(
-                    'addPhoneCalendar',
-                    JSON.stringify(eventData),
-                    callbackId
-                );
-            } catch (error) {
-                output.textContent = `请求失败: ${error.message}`;
-            }
-        }
+        }  
     </script>
 </body>
 
