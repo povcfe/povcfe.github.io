@@ -59,7 +59,7 @@
 </head>
 
 <body>
-    <button onclick="runPoc()">run poc</button>
+    <button onclick="runPoc()">run poc0</button>
     <pre id="raw-output">test</pre>
 
     <script>
@@ -83,7 +83,8 @@
 
             try {
                 const callbackId = `dev_${Date.now()}`;
-                window.JsRuntime.invoke('getDeviceInfo', '{}', callbackId);
+                // window.JsRuntime.invoke('getDeviceInfo', '{}', callbackId);
+                window.JsRuntime.invoke('getUserInfo', '{}', callbackId);
             } catch (error) {
                 output.textContent = `请求失败: ${error.message}`;
             }
