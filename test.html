@@ -123,9 +123,19 @@
             output.textContent = "(requestData)请求发送中...";
 
             try {
-                req_data = '{"path":"api/agent/model/list","method":"POST","data":"{\"agentId\":\"naQivTmsDa\"}","header":"{}"}'
+                // req_data = '{"path":"api/agent/model/list","method":"POST","data":"{\"agentId\":\"naQivTmsDa\"}","header":"{}"}'
+                const data = {
+                    agentId: "naQivTmsDa"
+                };
+                const requestConfig = {
+                    path: "api/agent/model/list",
+                    method: "POST",
+                    data: dataJson,
+                    header: {}
+                };
+                const str2 = JSON.stringify(requestConfig, null, 2);
                 callback_id = 1003
-                window.JsRuntime.invoke('request', req_data, callback_id);
+                window.JsRuntime.invoke('request', str2, callback_id);
             } catch (error) {
                 output.textContent = `请求失败: ${error.message}`;
             }
