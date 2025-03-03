@@ -57,14 +57,10 @@
 </head>
 
 <body>
-    <button onclick="getUserInfo()">getUserInfo</button>
     <button onclick="getAppVersion()">getAppVersion</button>
     <button onclick="getDeviceInfo()">getDeviceInfo</button>
-    <button onclick="request0()">request0</button>
-    <button onclick="request1()">request1</button>
-    <button onclick="request2()">request2</button>
-    <button onclick="request3()">request3</button>
-    <button onclick="request13()">request13</button>
+    <button onclick="requestGetUserInfo()">requestGetUserInfo</button>
+    <button onclick="requestGetHistory()">RequestGetHistory</button>
     <pre id="raw-output">test</pre>
 
     <script>
@@ -81,7 +77,7 @@
             }
         };
 
-        function request0() {
+        function requestGetUserInfo() {
             const output = document.getElementById('raw-output');
             output.textContent = "(requestData)请求发送中...";
 
@@ -93,62 +89,11 @@
             }
         }
 
-        function request1() {
+        function requestGetHistory() {
             const output = document.getElementById('raw-output');
             output.textContent = "(requestData)请求发送中...";
 
             try {
-                req_data = '{"path":"api/info/general","method":"GET","data":"{}","header":"{}"}'
-                callback_id = 1001
-                window.JsRuntime.invoke('request', req_data, callback_id);
-            } catch (error) {
-                output.textContent = `请求失败: ${error.message}`;
-            }
-        }
-
-        function request2() {
-            const output = document.getElementById('raw-output');
-            output.textContent = "(requestData)请求发送中...";
-
-            try {
-                req_data = '{"path":"api/info/public/general","method":"GET","data":"{}","header":"{}"}'
-                callback_id = 1002
-                window.JsRuntime.invoke('request', req_data, callback_id);
-            } catch (error) {
-                output.textContent = `请求失败: ${error.message}`;
-            }
-        }
-
-        function request3() {
-            const output = document.getElementById('raw-output');
-            output.textContent = "(requestData)请求发送中...";
-
-            try {
-                // req_data = '{"path":"api/agent/model/list","method":"POST","data":"{\"agentId\":\"naQivTmsDa\"}","header":"{}"}'
-                const data = {
-                    agentId: "naQivTmsDa"
-                };
-                const dataJson = JSON.stringify(data);
-                const requestConfig = {
-                    path: "api/agent/model/list",
-                    method: "POST",
-                    data: dataJson,
-                    header: {}
-                };
-                const str2 = JSON.stringify(requestConfig, null, 2);
-                callback_id = 1003
-                window.JsRuntime.invoke('request', str2, callback_id);
-            } catch (error) {
-                output.textContent = `请求失败: ${error.message}`;
-            }
-        }
-
-        function request13() {
-            const output = document.getElementById('raw-output');
-            output.textContent = "(requestData)请求发送中...";
-
-            try {
-                // req_data = '{"path":"api/user/agent/conversation/list ","method":"POST","data":"{\"agentId\":\"naQivTmsDa\",\"offset\":0,\"limit\":40,\"filterGoodQuestion\":true}","header":"{}"}'
                 const data = {
                     agentId: "naQivTmsDa",
                     offset: 0,
