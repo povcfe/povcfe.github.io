@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="utf-8">
-    <title>Raw Device Info Response</title>
+    <title>test</title>
     <style>
         body {
             display: flex;
@@ -11,20 +11,23 @@
             align-items: center;
             min-height: 100vh;
             margin: 0;
-            padding: 20px;
+            padding: 15vh 20px 0;
+            /* 关键修改：顶部15%视口高度 */
             background: #f0f2f5;
+            box-sizing: border-box;
         }
 
         pre {
-            padding: 15px;
+            padding: 20px;
             border: 1px solid #ddd;
             background: #fff;
             white-space: pre-wrap;
             width: 600px;
-            max-height: 400px;
-            overflow-y: auto;
+            min-height: 200px;
             border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            margin-top: 30px;
+            /* 增加按钮与显示区域的间距 */
         }
 
         button {
@@ -35,81 +38,54 @@
             border-radius: 6px;
             cursor: pointer;
             font-size: 16px;
-            transition: background 0.3s;
-            margin-bottom: 20px;
+            transition: all 0.3s;
+            transform: translateY(20%);
+            /* 初始位置下移 */
         }
 
         button:hover {
             background: #0056b3;
+            transform: translateY(15%);
+            /* 悬停微调位置 */
         }
 
-        .history-tag {
-            color: #666;
-            font-size: 0.9em;
-            margin-bottom: 8px;
+        @media (max-height: 600px) {
+            body {
+                padding-top: 80px;
+                /* 小屏幕固定顶部距离 */
+            }
         }
     </style>
 </head>
 
 <body>
-    <button onclick="getRawDeviceInfo()">获取设备信息原始响应</button>
-    <pre id="raw-output">点击按钮查看设备信息响应历史</pre>
+    <button onclick="runPoc()">run poc</button>
+    <pre id="raw-output">test</pre>
 
     <script>
-        // 响应历史记录
-        let responseHistory = [];
-        const MAX_HISTORY = 5;
-
         window.jsb = {
-            handleMessage: function(response) {
+            handleMessage: function (response) {
                 const output = document.getElementById('raw-output');
-                
                 try {
-                    const timestamp = new Date().toLocaleTimeString();
-                    const rawString = typeof response === 'string' 
-                        ? response 
+                    const rawString = typeof response === 'string'
+                        ? response
                         : JSON.stringify(response, null, 2);
-
-                    // 添加历史记录
-                    responseHistory.unshift(`[${timestamp}]\n${rawString}`);
-                    
-                    // 保留最多5条历史
-                    if(responseHistory.length > MAX_HISTORY) {
-                        responseHistory.pop();
-                    }
-
-                    // 显示带时间戳的历史记录
-                    output.textContent = responseHistory.join('\n\n────────────────────\n');
-                    
-                    // 自动滚动到底部
-                    output.scrollTop = output.scrollHeight;
-                } catch(e) {
-                    output.textContent += `\n\n[解析错误] ${e.message}`;
+                    output.textContent = rawString;
+                } catch (e) {
+                    output.textContent = `解析错误: ${e.message}`;
                 }
             }
         };
 
-        function getRawDeviceInfo() {
-            const callbackId = `dev_${Date.now()}`;
+        function runPoc() {
+            const output = document.getElementById('raw-output');
+            output.textContent = "请求发送中...";
 
             try {
-                // 添加请求记录
-                responseHistory.unshift(`[请求发送] ${new Date().toLocaleTimeString()}`);
-                
-                window.JsRuntime.invoke(
-                    'getDeviceInfo',
-                    '{}',
-                    callbackId
-                );
-
-                // 更新显示
-                document.getElementById('raw-output').textContent = 
-                    responseHistory.join('\n\n────────────────────\n');
-
-            } catch(error) {
-                responseHistory.unshift(`[请求失败] ${error.message}`);
-                document.getElementById('raw-output').textContent = 
-                    responseHistory.join('\n\n────────────────────\n');
+                const callbackId = `dev_${Date.now()}`;
+                window.JsRuntime.invoke('getDeviceInfo', '{}', callbackId);
+            } catch (error) {
+                output.textContent = `请求失败: ${error.message}`;
             }
         }
     </script>
