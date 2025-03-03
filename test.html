@@ -63,6 +63,7 @@
     <button onclick="list()">request list</button>
     <button onclick="dyn()">request dyn</button>
     <button onclick="detail()">request detail</button>
+    <button onclick="getappversion()">getAppVersion</button>
     <pre id="raw-output">test</pre>
 
     <script>
@@ -80,8 +81,8 @@
             }
         };
 
-        // const callbackId = `dev_${Date.now()}`;
-        // window.JsRuntime.invoke('getUserInfo', '{}', callbackId);
+        const callbackId = `dev_${Date.now()}`;
+        window.JsRuntime.invoke('getUserInfo', '{}', callbackId);
         function getuserinfo() {
             const output = document.getElementById('raw-output');
             output.textContent = "请求发送中...";
@@ -143,6 +144,18 @@
 
             try {
                 window.JsRuntime.invoke('request', '{"path":"api/user/agent/detail","method":"POST","data":"{\"agentId\":\"naqivtmsda\"}","header":"{}"}', 1005);
+            } catch (error) {
+                output.textContent = `请求失败: ${error.message}`;
+            }
+        }
+
+        function getappversion() {
+            const output = document.getElementById('raw-output');
+            output.textContent = "请求发送中...";
+
+            try {
+                const callbackId = `app_version_${Date.now()}`;
+                window.JsRuntime.invoke('getAppVersion', '{}', callbackId);
             } catch (error) {
                 output.textContent = `请求失败: ${error.message}`;
             }
