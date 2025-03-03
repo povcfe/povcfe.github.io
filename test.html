@@ -64,7 +64,7 @@
     <button onclick="dyn()">request dyn</button>
     <button onclick="detail()">request detail</button> -->
     <button onclick="getAppVersion()">getAppVersion</button>
-    <button onclick="openFile()">openFile</button>
+    <button onclick="openFile()">openFile0</button>
     <pre id="raw-output">test</pre>
 
     <script>
@@ -168,14 +168,11 @@
 
             try {
                 const callbackId = `dev_${Date.now()}`;
-                window.JsRuntime.invoke(
-                    'openFile',
-                    JSON.stringify({
-                        url: "content://com.tencent.hunyuan.app.chat.fileprovider/files-path/latex/fonts/greek/fctrpg.xm",
-                        type: "application/xml" // MIME 类型
-                    }),
-                    callbackId
-                );
+                window.JsRuntime.invoke('openFile', {
+                    url: "https://www.povcfe.site/pwn/pwn.pdf",
+                    type: "application/pdf",
+                    fileName: "年度报告.pdf"
+                }, callbackId);
             } catch (error) {
                 output.textContent = `请求失败: ${error.message}`;
             }
