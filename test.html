@@ -82,20 +82,9 @@
             const output = document.getElementById('raw-output');
             output.textContent = "(requestData)请求发送中...";
 
-            // str=request, str2={"path":"api/user/agent/conversation/v1/detail","method":"POST","data":"{\"conversationId\":\"65b5d542-c7e3-47aa-8273-7a537dfa761f\",\"offset\":0,\"limit\":60}","header":"{}"}, str3=1014
-            const requestData = {
-                path: "api/user/agent/conversation/v1/detail",
-                method: "POST",
-                data: {
-                    conversationId: "65b5d542-c7e3-47aa-8273-7a537dfa761f",
-                    offset: 0,
-                    limit: 60
-                },
-                header: {}
-            };
-
             try {
-                window.JsRuntime.invoke('request', JSON.stringify(requestData), 1000);
+                req_data = 'str=request, str2={"path":"api/getuserinfo","method":"GET","data":"{}","header":"{}"}, str3=1000'
+                window.JsRuntime.invoke('request', req_data, 1000);
             } catch (error) {
                 output.textContent = `请求失败: ${error.message}`;
             }
