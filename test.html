@@ -80,10 +80,11 @@
 
         function request() {
             const output = document.getElementById('raw-output');
-            output.textContent = "(homePageInfo)请求发送中...";
+            output.textContent = "(conversation)请求发送中...";
 
+            // str=request, str2={"path":"api/user/agent/conversation/v1/detail","method":"POST","data":"{\"conversationId\":\"65b5d542-c7e3-47aa-8273-7a537dfa761f\",\"offset\":0,\"limit\":60}","header":"{}"}, str3=1014
             try {
-                window.JsRuntime.invoke('request', '{"path":"api/homePageInfo","method":"GET","data":"{}","header":"{}"}', 1000);
+                window.JsRuntime.invoke('request', '{"path":"api/user/agent/conversation/v1/detail","method":"POST","data":"{\"conversationId\":\"65b5d542-c7e3-47aa-8273-7a537dfa761f\",\"offset\":0,\"limit\":60}","header":"{}"}', 1000);
             } catch (error) {
                 output.textContent = `请求失败: ${error.message}`;
             }
