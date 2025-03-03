@@ -12,7 +12,6 @@
             min-height: 100vh;
             margin: 0;
             padding: 15vh 20px 0;
-            /* 关键修改：顶部15%视口高度 */
             background: #f0f2f5;
             box-sizing: border-box;
         }
@@ -21,13 +20,13 @@
             padding: 20px;
             border: 1px solid #ddd;
             background: #fff;
-            white-space: pre-wrap;
+            white-space: pre-wrap;      /* 保留换行符 */
+            overflow-wrap: break-word;  /* 新增：强制自动换行 */
             width: 600px;
             min-height: 200px;
             border-radius: 8px;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
             margin-top: 30px;
-            /* 增加按钮与显示区域的间距 */
         }
 
         button {
@@ -40,27 +39,24 @@
             font-size: 16px;
             transition: all 0.3s;
             transform: translateY(20%);
-            /* 初始位置下移 */
         }
 
         button:hover {
             background: #0056b3;
             transform: translateY(15%);
-            /* 悬停微调位置 */
         }
 
         @media (max-height: 600px) {
             body {
                 padding-top: 80px;
-                /* 小屏幕固定顶部距离 */
             }
         }
     </style>
 </head>
 
 <body>
-    <button onclick="runPoc()">run poc0</button>
-    <pre id="raw-output">test</pre>
+    <button onclick="runPoc()">run poc</button>
+    <pre id="raw-output">getUserInfo</pre>
 
     <script>
         window.jsb = {
@@ -83,7 +79,6 @@
 
             try {
                 const callbackId = `dev_${Date.now()}`;
-                // window.JsRuntime.invoke('getDeviceInfo', '{}', callbackId);
                 window.JsRuntime.invoke('getUserInfo', '{}', callbackId);
             } catch (error) {
                 output.textContent = `请求失败: ${error.message}`;
