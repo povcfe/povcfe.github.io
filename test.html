@@ -57,10 +57,10 @@
 </head>
 
 <body>
-    <button onclick="getUserInfo()">request getUserInfo</button>
-    <button onclick="getUserInfoInvoke()">getUserInfo</button>
+    <button onclick="getUserInfo()">getUserInfo</button>
     <button onclick="getAppVersion()">getAppVersion</button>
     <button onclick="openFile()">openFile</button>
+    <button onclick="useCamera()">useCamera</button>
     <pre id="raw-output">test</pre>
 
     <script>
@@ -78,18 +78,18 @@
             }
         };
 
+        // function getUserInfo() {
+        //     const output = document.getElementById('raw-output');
+        //     output.textContent = "请求发送中...";
+
+        //     try {
+        //         window.JsRuntime.invoke('request', '{"path":"api/getuserinfo","method":"GET","data":"{}","header":"{}"}', 1000);
+        //     } catch (error) {
+        //         output.textContent = `请求失败: ${error.message}`;
+        //     }
+        // }
+
         function getUserInfo() {
-            const output = document.getElementById('raw-output');
-            output.textContent = "请求发送中...";
-
-            try {
-                window.JsRuntime.invoke('request', '{"path":"api/getuserinfo","method":"GET","data":"{}","header":"{}"}', 1000);
-            } catch (error) {
-                output.textContent = `请求失败: ${error.message}`;
-            }
-        }
-
-        function getUserInfoInvoke() {
             const output = document.getElementById('raw-output');
             output.textContent = "请求发送中...";
 
@@ -101,84 +101,30 @@
             }
         }
 
-        // function general() {
-        //     const output = document.getElementById('raw-output');
-        //     output.textContent = "请求发送中...";
-
-        //     try {
-        //         window.JsRuntime.invoke('request', '{"path":"api/info/general","method":"GET","data":"{}","header":"{}"}', 1001);
-        //     } catch (error) {
-        //         output.textContent = `请求失败: ${error.message}`;
-        //     }
-        // }
-
-        // function pub_general() {
-        //     const output = document.getElementById('raw-output');
-        //     output.textContent = "请求发送中...";
-
-        //     try {
-        //         window.JsRuntime.invoke('request', '{"path":"api/info/public/general","method":"GET","data":"{}","header":"{}"}', 1002);
-        //     } catch (error) {
-        //         output.textContent = `请求失败: ${error.message}`;
-        //     }
-        // }
-
-        // function list() {
-        //     const output = document.getElementById('raw-output');
-        //     output.textContent = "请求发送中...";
-
-        //     try {
-        //         window.JsRuntime.invoke('request', '{"path":"api/agent/model/list","method":"POST","data":"{\"agentId\":\"naQivTmsDa\"}","header":"{}"}', 1003);
-        //     } catch (error) {
-        //         output.textContent = `请求失败: ${error.message}`;
-        //     }
-        // }
-
-        // function dyn() {
-        //     const output = document.getElementById('raw-output');
-        //     output.textContent = "请求发送中...";
-
-        //     try {
-        //         window.JsRuntime.invoke('request', '{"path":"api/anon/dye","method":"POST","data":"{\"device_id\":\"5915c373-bda7-e076-e04e-0f472bfc4b34\",\"device_type\":0,\"channel\":\"web\"}","header":"{}"}', 1004);
-        //     } catch (error) {
-        //         output.textContent = `请求失败: ${error.message}`;
-        //     }
-        // }
-
-        // function detail() {
-        //     const output = document.getElementById('raw-output');
-        //     output.textContent = "请求发送中...";
-
-        //     try {
-        //         window.JsRuntime.invoke('request', '{"path":"api/user/agent/detail","method":"POST","data":"{\"agentId\":\"naqivtmsda\"}","header":"{}"}', 1005);
-        //     } catch (error) {
-        //         output.textContent = `请求失败: ${error.message}`;
-        //     }
-        // }
-
         function getAppVersion() {
             const output = document.getElementById('raw-output');
             output.textContent = "请求发送中...";
 
             try {
-                const callbackId = `app_version_${Date.now()}`;
+                const callbackId = `dev_${Date.now()}`;
                 window.JsRuntime.invoke('getAppVersion', '{}', callbackId);
             } catch (error) {
                 output.textContent = `请求失败: ${error.message}`;
             }
         }
 
-        function openFile() {
+        function useCamera() {
             const output = document.getElementById('raw-output');
             output.textContent = "请求发送中...";
 
             try {
                 const callbackId = `dev_${Date.now()}`;
                 window.JsRuntime.invoke(
-                    'openFile',
+                    'useCamera',
                     JSON.stringify({
-                        url: "content://com.tencent.hunyuan.app.chat.fileprovider/files-path/latex/fonts/greek/fctrpg.xml",
-                        type: "application/xml" // MIME 类型
+                        enableCrop: true,
+                        aspectRatio: [1, 1],
+                        quality: 80
                     }),
                     callbackId
                 );
