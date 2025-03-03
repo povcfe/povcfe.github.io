@@ -58,13 +58,9 @@
 
 <body>
     <button onclick="getUserInfo()">request getUserInfo</button>
-    <!-- <button onclick="general()">request general</button>
-    <button onclick="pub_general()">request pub_general</button>
-    <button onclick="list()">request list</button>
-    <button onclick="dyn()">request dyn</button>
-    <button onclick="detail()">request detail</button> -->
+    <button onclick="getUserInfoInvoke()">getUserInfo</button>
     <button onclick="getAppVersion()">getAppVersion</button>
-    <button onclick="openFile()">openFile0</button>
+    <button onclick="openFile()">openFile</button>
     <pre id="raw-output">test</pre>
 
     <script>
@@ -82,14 +78,24 @@
             }
         };
 
-        const callbackId = `dev_${Date.now()}`;
-        window.JsRuntime.invoke('getUserInfo', '{}', callbackId);
         function getUserInfo() {
             const output = document.getElementById('raw-output');
             output.textContent = "请求发送中...";
 
             try {
                 window.JsRuntime.invoke('request', '{"path":"api/getuserinfo","method":"GET","data":"{}","header":"{}"}', 1000);
+            } catch (error) {
+                output.textContent = `请求失败: ${error.message}`;
+            }
+        }
+
+        function getUserInfoInvoke() {
+            const output = document.getElementById('raw-output');
+            output.textContent = "请求发送中...";
+
+            try {
+                const callbackId = `dev_${Date.now()}`;
+                window.JsRuntime.invoke('getUserInfo', '{}', callbackId);
             } catch (error) {
                 output.textContent = `请求失败: ${error.message}`;
             }
@@ -168,11 +174,14 @@
 
             try {
                 const callbackId = `dev_${Date.now()}`;
-                window.JsRuntime.invoke('openFile', {
-                    url: "https://www.povcfe.site/pwn/pwn.pdf",
-                    type: "application/pdf",
-                    fileName: "年度报告.pdf"
-                }, callbackId);
+                window.JsRuntime.invoke(
+                    'openFile',
+                    JSON.stringify({
+                        url: "content://com.tencent.hunyuan.app.chat.fileprovider/files-path/latex/fonts/greek/fctrpg.xml",
+                        type: "application/xml" // MIME 类型
+                    }),
+                    callbackId
+                );
             } catch (error) {
                 output.textContent = `请求失败: ${error.message}`;
             }
