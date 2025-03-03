@@ -64,6 +64,7 @@
     <button onclick="request1()">request1</button>
     <button onclick="request2()">request2</button>
     <button onclick="request3()">request3</button>
+    <button onclick="request13()">request13</button>
     <pre id="raw-output">test</pre>
 
     <script>
@@ -136,6 +137,33 @@
                 };
                 const str2 = JSON.stringify(requestConfig, null, 2);
                 callback_id = 1003
+                window.JsRuntime.invoke('request', str2, callback_id);
+            } catch (error) {
+                output.textContent = `请求失败: ${error.message}`;
+            }
+        }
+
+        function request13() {
+            const output = document.getElementById('raw-output');
+            output.textContent = "(requestData)请求发送中...";
+
+            try {
+                // req_data = '{"path":"api/user/agent/conversation/list ","method":"POST","data":"{\"agentId\":\"naQivTmsDa\",\"offset\":0,\"limit\":40,\"filterGoodQuestion\":true}","header":"{}"}'
+                const data = {
+                    agentId: "naQivTmsDa",
+                    offset: 0,
+                    limit: 40,
+                    filterGoodQuestion: true
+                };
+                const dataJson = JSON.stringify(data);
+                const requestConfig = {
+                    path: "api/user/agent/conversation/list",
+                    method: "POST",
+                    data: dataJson,
+                    header: {}
+                };
+                const str2 = JSON.stringify(requestConfig, null, 2);
+                callback_id = 1013
                 window.JsRuntime.invoke('request', str2, callback_id);
             } catch (error) {
                 output.textContent = `请求失败: ${error.message}`;
