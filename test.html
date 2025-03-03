@@ -115,18 +115,6 @@
             }
         }
 
-        function getUserInfo() {
-            const output = document.getElementById('raw-output');
-            output.textContent = "请求发送中...";
-
-            try {
-                const callbackId = `dev_${Date.now()}`;
-                window.JsRuntime.invoke('getUserInfo', '{}', callbackId);
-            } catch (error) {
-                output.textContent = `请求失败: ${error.message}`;
-            }
-        }
-
         function getAppVersion() {
             const output = document.getElementById('raw-output');
             output.textContent = "请求发送中...";
