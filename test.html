@@ -63,6 +63,7 @@
     <button onclick="request0()">request0</button>
     <button onclick="request1()">request1</button>
     <button onclick="request2()">request2</button>
+    <button onclick="request3()">request3</button>
     <pre id="raw-output">test</pre>
 
     <script>
@@ -111,6 +112,19 @@
             try {
                 req_data = '{"path":"api/info/public/general","method":"GET","data":"{}","header":"{}"}'
                 callback_id = 1002
+                window.JsRuntime.invoke('request', req_data, callback_id);
+            } catch (error) {
+                output.textContent = `请求失败: ${error.message}`;
+            }
+        }
+
+        function request3() {
+            const output = document.getElementById('raw-output');
+            output.textContent = "(requestData)请求发送中...";
+
+            try {
+                req_data = '{"path":"api/agent/model/list","method":"POST","data":"{\"agentId\":\"naQivTmsDa\"}","header":"{}"}'
+                callback_id = 1003
                 window.JsRuntime.invoke('request', req_data, callback_id);
             } catch (error) {
                 output.textContent = `请求失败: ${error.message}`;
