@@ -57,7 +57,7 @@
 </head>
 
 <body>
-    <button onclick="runPoc()">run poc3</button>
+    <button onclick="runPoc()">run poc4</button>
     <pre id="raw-output">test</pre>
 
     <script>
@@ -83,7 +83,9 @@
                 const callbackId = `dev_${Date.now()}`;
                 // window.JsRuntime.invoke('getUserInfo', '{}', callbackId);
                 // window.JsRuntime.invoke('request', '{"path":"api/getuserinfo","method":"GET","data":"{}","header":"{}"}', 1000);
-                window.JsRuntime.invoke('request', '{"path":"api/info/general","method":"GET","data":"{}","header":"{}"}', 1001);
+                // window.JsRuntime.invoke('request', '{"path":"api/info/general","method":"GET","data":"{}","header":"{}"}', 1001);
+                // window.JsRuntime.invoke('request', '{"path":"api/info/general","method":"GET","data":"{}","header":"{}"}', 1001);
+                window.JsRuntime.invoke('request', '{"path":"path":"api/info/public/general","method":"GET","data":"{}","header":"{}"}', 1001);
             } catch (error) {
                 output.textContent = `请求失败: ${error.message}`;
             }
