@@ -60,6 +60,7 @@
     <button onclick="getUserInfo()">getUserInfo</button>
     <button onclick="getAppVersion()">getAppVersion</button>
     <button onclick="getDeviceInfo()">getDeviceInfo</button>
+    <button onclick="request()">request</button>
     <pre id="raw-output">test</pre>
 
     <script>
@@ -77,16 +78,16 @@
             }
         };
 
-        // function getUserInfo() {
-        //     const output = document.getElementById('raw-output');
-        //     output.textContent = "请求发送中...";
+        function request() {
+            const output = document.getElementById('raw-output');
+            output.textContent = "(general)请求发送中...";
 
-        //     try {
-        //         window.JsRuntime.invoke('request', '{"path":"api/getuserinfo","method":"GET","data":"{}","header":"{}"}', 1000);
-        //     } catch (error) {
-        //         output.textContent = `请求失败: ${error.message}`;
-        //     }
-        // }
+            try {
+                window.JsRuntime.invoke('request', '{"path":"api/info/general","method":"GET","data":"{}","header":"{}"}', 1000);
+            } catch (error) {
+                output.textContent = `请求失败: ${error.message}`;
+            }
+        }
 
         function getUserInfo() {
             const output = document.getElementById('raw-output');
