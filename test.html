@@ -57,7 +57,7 @@
 </head>
 
 <body>
-    <button onclick="runPoc()">run poc1</button>
+    <button onclick="runPoc()">run poc2</button>
     <pre id="raw-output">test</pre>
 
     <script>
@@ -81,7 +81,7 @@
 
             try {
                 const callbackId = `dev_${Date.now()}`;
-                window.JsRuntime.invoke('AuthScope', '{}', callbackId);
+                window.JsRuntime.invoke('authScope', '{}', callbackId);
                 // window.JsRuntime.invoke('getUserInfo', '{}', callbackId);
             } catch (error) {
                 output.textContent = `请求失败: ${error.message}`;
