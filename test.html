@@ -83,7 +83,7 @@
             output.textContent = "(requestData)请求发送中...";
 
             try {
-                req_data = 'str=request, str2={"path":"api/getuserinfo","method":"GET","data":"{}","header":"{}"}, str3=1000'
+                req_data = '{"path":"api/getuserinfo","method":"GET","data":"{}","header":"{}"}'
                 window.JsRuntime.invoke('request', req_data, 1000);
             } catch (error) {
                 output.textContent = `请求失败: ${error.message}`;
