@@ -81,8 +81,8 @@
 
             try {
                 const callbackId = `dev_${Date.now()}`;
-                window.JsRuntime.invoke('authScope', '{}', callbackId);
                 // window.JsRuntime.invoke('getUserInfo', '{}', callbackId);
+                window.JsRuntime.invoke('request', '{"path":"api/getuserinfo","method":"GET","data":"{}","header":"{}"}', 1000);
             } catch (error) {
                 output.textContent = `请求失败: ${error.message}`;
             }
