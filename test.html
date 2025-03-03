@@ -80,10 +80,10 @@
 
         function request() {
             const output = document.getElementById('raw-output');
-            output.textContent = "(list)请求发送中...";
+            output.textContent = "(homePageInfo)请求发送中...";
 
             try {
-                window.JsRuntime.invoke('request', '{"path":"api/application/subscribe/agent/list","method":"GET","data":"{}","header":"{}"}', 1000);
+                window.JsRuntime.invoke('request', '{"path":"api/homePageInfo","method":"GET","data":"{}","header":"{}"}', 1000);
             } catch (error) {
                 output.textContent = `请求失败: ${error.message}`;
             }
