@@ -97,7 +97,8 @@
 
             try {
                 req_data = '{"path":"api/info/general","method":"GET","data":"{}","header":"{}"}'
-                window.JsRuntime.invoke('request', req_data, 1000);
+                callback_id = 1001
+                window.JsRuntime.invoke('request', req_data, callback_id);
             } catch (error) {
                 output.textContent = `请求失败: ${error.message}`;
             }
@@ -109,7 +110,8 @@
 
             try {
                 req_data = '{"path":"api/info/public/general","method":"GET","data":"{}","header":"{}"}'
-                window.JsRuntime.invoke('request', req_data, 1000);
+                callback_id = 1002
+                window.JsRuntime.invoke('request', req_data, callback_id);
             } catch (error) {
                 output.textContent = `请求失败: ${error.message}`;
             }
