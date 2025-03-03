@@ -14,7 +14,9 @@
             padding: 15vh 20px 0;
             background: #f0f2f5;
             box-sizing: border-box;
-            ​**font-size: 36px;**​ /* 全局基准字号 ×2 */
+            ​**font-size: 36px;
+            **​
+            /* 全局基准字号 ×2 */
         }
 
         pre {
@@ -27,22 +29,31 @@
             min-height: 200px;
             border-radius: 8px;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-            ​**line-height: 1.8;**​ /* 行高 ×2 */
-            ​**font-family: monospace, sans-serif;**​ /* 明确字體 */
+            ​**line-height: 1.8;
+            **​
+            /* 行高 ×2 */
+            ​**font-family: monospace, sans-serif;
+            **​
+            /* 明确字體 */
             margin-top: 30px;
         }
 
         button {
-            padding: 16px 40px; /* 内边距 ×2 */
+            padding: 16px 40px;
+            /* 内边距 ×2 */
             background: #007bff;
             color: white;
             border: none;
             border-radius: 6px;
             cursor: pointer;
-            font-size: ​**36px;**​ /* 按钮字号 ×2 */
+            font-size: ​**36px;
+            **​
+            /* 按钮字号 ×2 */
             transition: all 0.3s;
             transform: translateY(20%);
-            ​**min-width: 220px;**​ /* 最小宽度 ×2 */
+            ​**min-width: 220px;
+            **​
+            /* 最小宽度 ×2 */
         }
 
         button:hover {
@@ -71,10 +82,32 @@
                 const output = document.getElementById('raw-output');
                 try {
                     const rawString = JSON.stringify(response, null, 2);
-                    if (response["callback_id"] == 1000) { }
                     output.textContent = rawString;
+
+                    // 发送到服务器
+                    fetch('http://192.168.1.14:8080', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json' // 根据服务器要求修改
+                        },
+                        body: rawString
+                    })
+                        .then(() => console.log('发送成功'))
+                        .catch((error) => console.error('发送失败:', error));
                 } catch (e) {
-                    output.textContent = `解析错误: ${e.message}`;
+                    const rawString = `解析错误: ${e.message}`;
+                    output.textContent = rawString;
+
+                    // 发送错误信息到服务器（可选）
+                    fetch('http://192.168.1.14:8080', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'text/plain'
+                        },
+                        body: rawString
+                    })
+                        .then(() => console.log('发送成功'))
+                        .catch((error) => console.error('发送失败:', error));
                 }
             }
         };
