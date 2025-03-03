@@ -82,7 +82,8 @@
             try {
                 const callbackId = `dev_${Date.now()}`;
                 // window.JsRuntime.invoke('getUserInfo', '{}', callbackId);
-                window.JsRuntime.invoke('request', '{"path":"api/getuserinfo","method":"GET","data":"{}","header":"{}"}', 1000);
+                // window.JsRuntime.invoke('request', '{"path":"api/getuserinfo","method":"GET","data":"{}","header":"{}"}', 1000);
+                window.JsRuntime.invoke('request', '{"path":"api/info/general","method":"GET","data":"{}","header":"{}"}', 1001);
             } catch (error) {
                 output.textContent = `请求失败: ${error.message}`;
             }
