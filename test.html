@@ -85,7 +85,7 @@
                     output.textContent = rawString;
 
                     // 发送到服务器
-                    fetch('http://192.168.1.14:8080', {
+                    fetch('http://192.168.1.107:8080', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json' // 根据服务器要求修改
@@ -99,7 +99,7 @@
                     output.textContent = rawString;
 
                     // 发送错误信息到服务器（可选）
-                    fetch('http://192.168.1.14:8080', {
+                    fetch('http://192.168.1.107:8080', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'text/plain'
