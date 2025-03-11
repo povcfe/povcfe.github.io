@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>test</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 15vh 20px 0;
+            background: #f0f2f5;
+            box-sizing: border-box;
+            ​**font-size: 36px;**​ /* 全局基准字号 ×2 */
+        }
+
+        pre {
+            padding: 20px;
+            border: 1px solid #ddd;
+            background: #fff;
+            white-space: pre-wrap;
+            overflow-wrap: break-word;
+            width: 600px;
+            min-height: 200px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            ​**line-height: 1.8;**​ /* 行高 ×2 */
+            ​**font-family: monospace, sans-serif;**​ /* 明确字體 */
+            margin-top: 30px;
+        }
+
+        button {
+            padding: 16px 40px; /* 内边距 ×2 */
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: ​**36px;**​ /* 按钮字号 ×2 */
+            transition: all 0.3s;
+            transform: translateY(20%);
+            ​**min-width: 220px;**​ /* 最小宽度 ×2 */
+        }
+
+        button:hover {
+            background: #0056b3;
+            transform: translateY(15%);
+        }
+
+        @media (max-height: 600px) {
+            body {
+                padding-top: 80px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <button onclick="getAppVersion()">getAppVersion</button>
+    <button onclick="getDeviceInfo()">getDeviceInfo</button>
+    <button onclick="requestGetUserInfo()">requestGetUserInfo</button>
+    <button onclick="requestGetHistory()">RequestGetHistory</button>
+    <pre id="raw-output">test</pre>
+
+    <script>
+        window.jsb = {
+            handleMessage: function (response) {
+                const output = document.getElementById('raw-output');
+                try {
+                    const rawString = JSON.stringify(response, null, 2);
+                    if (response["callback_id"] == 1000) { }
+                    output.textContent = rawString;
+                } catch (e) {
+                    output.textContent = `解析错误: ${e.message}`;
+                }
+            }
+        };
+
+        function requestGetUserInfo() {
+            const output = document.getElementById('raw-output');
+            output.textContent = "(requestData)请求发送中...";
+
+            try {
+                req_data = '{"path":"api/getuserinfo","method":"GET","data":"{}","header":"{}"}'
+                window.JsRuntime.invoke('request', req_data, 1000);
+            } catch (error) {
+                output.textContent = `请求失败: ${error.message}`;
+            }
+        }
+
+        function requestGetHistory() {
+            const output = document.getElementById('raw-output');
+            output.textContent = "(requestData)请求发送中...";
+
+            try {
+                const data = {
+                    agentId: "naQivTmsDa",
+                    offset: 0,
+                    limit: 40,
+                    filterGoodQuestion: true
+                };
+                const dataJson = JSON.stringify(data);
+                const requestConfig = {
+                    path: "api/user/agent/conversation/list",
+                    method: "POST",
+                    data: dataJson,
+                    header: {}
+                };
+                const str2 = JSON.stringify(requestConfig, null, 2);
+                callback_id = 1013
+                window.JsRuntime.invoke('request', str2, callback_id);
+            } catch (error) {
+                output.textContent = `请求失败: ${error.message}`;
+            }
+        }
+
+        function getAppVersion() {
+            const output = document.getElementById('raw-output');
+            output.textContent = "请求发送中...";
+
+            try {
+                const callbackId = `dev_${Date.now()}`;
+                window.JsRuntime.invoke('getAppVersion', '{}', callbackId);
+            } catch (error) {
+                output.textContent = `请求失败: ${error.message}`;
+            }
+        }
+
+        function getDeviceInfo() {
+            const output = document.getElementById('raw-output');
+            output.textContent = "请求发送中...";
+
+            try {
+                const callbackId = `dev_${Date.now()}`;
+                window.JsRuntime.invoke('getDeviceInfo', '{}', callbackId);
+            } catch (error) {
+                output.textContent = `请求失败: ${error.message}`;
+            }
+        }  
+    </script>
+</body>
+
+</html>
