@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>test</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 15vh 20px 0;
+            background: #f0f2f5;
+            box-sizing: border-box;
+        }
+
+        pre {
+            padding: 20px;
+            border: 1px solid #ddd;
+            background: #fff;
+            white-space: pre-wrap;
+            /* 保留换行符 */
+            overflow-wrap: break-word;
+            /* 新增：强制自动换行 */
+            width: 600px;
+            min-height: 200px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            margin-top: 30px;
+        }
+
+        button {
+            padding: 12px 32px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s;
+            transform: translateY(20%);
+        }
+
+        button:hover {
+            background: #0056b3;
+            transform: translateY(15%);
+        }
+
+        @media (max-height: 600px) {
+            body {
+                padding-top: 80px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <button onclick="getUserInfo()">getUserInfo</button>
+    <button onclick="getAppVersion()">getAppVersion</button>
+    <button onclick="openFile()">openFile</button>
+    <button onclick="useCamera()">useCamera</button>
+    <pre id="raw-output">test</pre>
+
+    <script>
+        window.jsb = {
+            handleMessage: function (response) {
+                const output = document.getElementById('raw-output');
+                try {
+                    const rawString = typeof response === 'string'
+                        ? response
+                        : JSON.stringify(response, null, 2);
+                    output.textContent = rawString;
+                } catch (e) {
+                    output.textContent = `解析错误: ${e.message}`;
+                }
+            }
+        };
+
+        // function getUserInfo() {
+        //     const output = document.getElementById('raw-output');
+        //     output.textContent = "请求发送中...";
+
+        //     try {
+        //         window.JsRuntime.invoke('request', '{"path":"api/getuserinfo","method":"GET","data":"{}","header":"{}"}', 1000);
+        //     } catch (error) {
+        //         output.textContent = `请求失败: ${error.message}`;
+        //     }
+        // }
+
+        function getUserInfo() {
+            const output = document.getElementById('raw-output');
+            output.textContent = "请求发送中...";
+
+            try {
+                const callbackId = `dev_${Date.now()}`;
+                window.JsRuntime.invoke('getUserInfo', '{}', callbackId);
+            } catch (error) {
+                output.textContent = `请求失败: ${error.message}`;
+            }
+        }
+
+        function getAppVersion() {
+            const output = document.getElementById('raw-output');
+            output.textContent = "请求发送中...";
+
+            try {
+                const callbackId = `dev_${Date.now()}`;
+                window.JsRuntime.invoke('getAppVersion', '{}', callbackId);
+            } catch (error) {
+                output.textContent = `请求失败: ${error.message}`;
+            }
+        }
+
+        function useCamera() {
+            const output = document.getElementById('raw-output');
+            output.textContent = "请求发送中...";
+
+            try {
+                const callbackId = `dev_${Date.now()}`;
+                window.JsRuntime.invoke(
+                    'useCamera',
+                    JSON.stringify({
+                        enableCrop: true,
+                        aspectRatio: [1, 1],
+                        quality: 80
+                    }),
+                    callbackId
+                );
+            } catch (error) {
+                output.textContent = `请求失败: ${error.message}`;
+            }
+        }
+    </script>
+</body>
+
+</html>
