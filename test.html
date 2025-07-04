@@ -86,7 +86,7 @@
 
             try {
                 req_data = '{"path":"api/getuserinfo","method":"GET","data":"{}","header":"{}"}'
-                window.JsRuntime.invoke('request', req_data, 1000);
+                JsRuntime.invoke('request', req_data, 1000);
             } catch (error) {
                 output.textContent = `请求失败: ${error.message}`;
             }
@@ -99,7 +99,7 @@
             try {
                 req_data = '{"path":"api/info/general","method":"GET","data":"{}","header":"{}"}'
                 callback_id = 1001
-                window.JsRuntime.invoke('request', req_data, callback_id);
+                JsRuntime.invoke('request', req_data, callback_id);
             } catch (error) {
                 output.textContent = `请求失败: ${error.message}`;
             }
@@ -112,7 +112,7 @@
             try {
                 req_data = '{"path":"api/info/public/general","method":"GET","data":"{}","header":"{}"}'
                 callback_id = 1002
-                window.JsRuntime.invoke('request', req_data, callback_id);
+                JsRuntime.invoke('request', req_data, callback_id);
             } catch (error) {
                 output.textContent = `请求失败: ${error.message}`;
             }
@@ -135,7 +135,7 @@
                 };
                 const str2 = JSON.stringify(requestConfig, null, 2);
                 callback_id = 1003
-                window.JsRuntime.invoke('request', str2, callback_id);
+                JsRuntime.invoke('request', str2, callback_id);
             } catch (error) {
                 output.textContent = `请求失败: ${error.message}`;
             }
@@ -147,7 +147,7 @@
 
             try {
                 const callbackId = `dev_${Date.now()}`;
-                window.JsRuntime.invoke('getUserInfo', '{}', callbackId);
+                JsRuntime.invoke('getUserInfo', '{}', callbackId);
             } catch (error) {
                 output.textContent = `请求失败: ${error.message}`;
             }
@@ -159,7 +159,7 @@
 
             try {
                 const callbackId = `dev_${Date.now()}`;
-                window.JsRuntime.invoke('getAppVersion', '{}', callbackId);
+                JsRuntime.invoke('getAppVersion', '{}', callbackId);
             } catch (error) {
                 output.textContent = `请求失败: ${error.message}`;
             }
@@ -171,7 +171,7 @@
 
             try {
                 const callbackId = `dev_${Date.now()}`;
-                window.JsRuntime.invoke('getDeviceInfo', '{}', callbackId);
+                JsRuntime.invoke('getDeviceInfo', '{}', callbackId);
             } catch (error) {
                 output.textContent = `请求失败: ${error.message}`;
             }
