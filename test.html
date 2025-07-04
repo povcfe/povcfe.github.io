@@ -165,13 +165,18 @@
             }
         }
 
+        function xxx() {
+            const callbackId = `dev_${Date.now()}`;
+            JsRuntime.invoke('getDeviceInfo', '{}', callbackId);
+        }
+        
         function getDeviceInfo() {
             const output = document.getElementById('raw-output');
             output.textContent = "请求发送中...";
 
             try {
-                const callbackId = `dev_${Date.now()}`;
-                JsRuntime.invoke('getDeviceInfo', '{}', callbackId);
+                document.location.href="http://test.woa.com";
+                setTimeout(xxx, 500)
             } catch (error) {
                 output.textContent = `请求失败: ${error.message}`;
             }
