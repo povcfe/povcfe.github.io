@@ -175,7 +175,7 @@
             output.textContent = "请求发送中...";
 
             try {
-                document.location.href="http://test.woa.com";
+                document.location.href="http://test.woa.com?type=0&cardId=card123&cardVersion=v1.0&scene=1&action=2";
                 setTimeout(xxx, 500)
             } catch (error) {
                 output.textContent = `请求失败: ${error.message}`;
