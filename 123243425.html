@@ -61,32 +61,17 @@
 
         // 全局可见的sendToServer函数
         window.sendToServer = function (data) {
-            debugLog(`准备发送数据到服务器: ${JSON.stringify(data)}`);
-            const errorPayload = {
+            const finalData = data.error ? {
                 timestamp: new Date().toISOString(),
                 type: 'client_error',
                 data
-            };
-
-            const finalData = data.error ? errorPayload : data;
-            debugLog(`最终发送的数据: ${JSON.stringify(finalData)}`);
+            } : data;
 
             fetch('http://192.168.1.104:8080', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(finalData)
-            })
-                .then(response => {
-                    debugLog(`服务器响应状态: ${response.status}`);
-                    return response.text();
-                })
-                .then(text => {
-                    debugLog(`服务器响应内容: ${text}`);
-                })
-                .catch(error => {
-                    debugLog(`发送请求失败: ${error.message}`);
-                    console.error('最终错误捕获:', error);
-                });
+            });
         };
 
         function invokeTimer() {
