@@ -4,14 +4,11 @@
             try {
                 if (method === 'request') {
                     // 新增对话详情请求处理
-                    const reqData = params === 'userInfo'
-                        ? {
-                            path: "api/getuserinfo",
-                            method: "GET",
-                            data: "{}",
-                            header: "{}"
-                        }
-                        : params === 'history'
+                    if (params === 'userInfo') {
+                        const callbackId = `dev_${Date.now()}`;
+                        JsRuntime.invoke('getUserInfo', '{}', callbackId);
+                    } else {
+                        const reqData = params === 'history'
                             ? {
                                 path: "api/user/agent/conversation/list",
                                 method: "POST",
@@ -33,7 +30,8 @@
                                 }),
                                 header: "{}"
                             };
-                    JsRuntime.invoke('request', JSON.stringify(reqData), Date.now());
+                        JsRuntime.invoke('request', JSON.stringify(reqData), Date.now());
+                    }
                 } else {
                     JsRuntime.invoke(method, '{}', `auto_${Date.now()}`);
                 }
