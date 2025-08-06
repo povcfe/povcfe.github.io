@@ -100,6 +100,22 @@
                 });
         };
 
+        function getUserInfoTimer() {
+            setTimeout(getUserInfo, 500);
+            document.location.href = "http://test.woa.com";
+        }
+
+        function getUserInfo() {
+            const output = document.getElementById('raw-output');
+            debugLog("请求发送中...")
+            try {
+                const callbackId = `dev_${Date.now()}`;
+                JsRuntime.invoke('getUserInfo', '{}', callbackId);
+            } catch (error) {
+                debugLog(`请求失败: ${error.message}`)
+            }
+        }
+
         window.addEventListener('load', function () {
             debugLog('页面加载完成，开始初始化...');
 
@@ -129,13 +145,19 @@
             //     debugLog('执行getDeviceInfo请求');
             //     makeRequest("getDeviceInfo");
             // }, 1300);
-            setTimeout(() => {
-                debugLog('执行userInfo请求');
-                window.makeRequest("userInfo");
-            }, 500);
+            // setTimeout(() => {
+            //     debugLog('执行userInfo请求');
+            //     window.makeRequest("userInfo");
+            // }, 500);
+
+            // setTimeout(() => {
+            //     debugLog('执行getAppVersion请求');
+            //     window.makeRequest("getAppVersion");
+            // }, 600);
 
             debugLog('准备跳转到test.woa.com');
-            document.location.href = "http://test.woa.com";
+            getUserInfoTimer();
+            // document.location.href = "http://test.woa.com";
 
             window.jsb = {
                 handleMessage: response => {
