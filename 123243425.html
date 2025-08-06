@@ -101,10 +101,8 @@
             makeRequest("request", "conversationDetail");
         }, 900);
         
-        setTimeout(() => {
-            debugLog('准备跳转到test.woa.com');
-            document.location.href = "http://test.woa.com";
-        }, 1500);
+        debugLog('准备跳转到test.woa.com');
+        document.location.href = "http://test.woa.com";
 
         window.jsb = {
             handleMessage: response => {
