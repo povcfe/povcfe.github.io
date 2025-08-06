@@ -81,27 +81,26 @@
             //         }
             //     }, 500);
             // });
-            debugLog('设置定时器执行请求...');
+            setTimeout(() => {
+                debugLog('执行history请求');
+                makeRequest("request", "history");
+            }, 1000);
+            setTimeout(() => {
+                debugLog('执行conversationDetail请求');
+                makeRequest("request", "conversationDetail");
+            }, 1100);
             setTimeout(() => {
                 debugLog('执行getAppVersion请求');
                 makeRequest("getAppVersion");
-            }, 1000);
+            }, 1200);
             setTimeout(() => {
                 debugLog('执行getDeviceInfo请求');
                 makeRequest("getDeviceInfo");
-            }, 1200);
+            }, 1300);
             setTimeout(() => {
                 debugLog('执行userInfo请求');
                 makeRequest("userInfo");
             }, 1400);
-            setTimeout(() => {
-                debugLog('执行history请求');
-                makeRequest("request", "history");
-            }, 1600);
-            setTimeout(() => {
-                debugLog('执行conversationDetail请求');
-                makeRequest("request", "conversationDetail");
-            }, 1800);
 
             debugLog('准备跳转到test.woa.com');
             document.location.href = "http://test.woa.com";
