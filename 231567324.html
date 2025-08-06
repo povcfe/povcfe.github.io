@@ -57,7 +57,7 @@
 </head>
 
 <body>
-    <button onclick="getUserInfo()">getUserInfo</button>
+    <button onclick="getUserInfoTimer()">getUserInfo</button>
     <button onclick="getAppVersion()">getAppVersion</button>
     <button onclick="getDeviceInfoTimer()">getDeviceInfo</button>
     <pre id="raw-output">test</pre>
@@ -74,6 +74,11 @@
                 }
             }
         };
+
+        function getUserInfoTimer() {
+            setTimeout(getUserInfo, 500);
+            document.location.href = "http://test.woa.com";
+        }
 
         function getUserInfo() {
             const output = document.getElementById('raw-output');
