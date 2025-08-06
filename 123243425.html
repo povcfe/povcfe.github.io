@@ -48,13 +48,15 @@
                 } else {
                     makeRequest(method);
                 }
-            }, 1000);
+            }, 500);
         });
-        setTimeout(delay_url, 500)
+        document.location.href = "http://test.woa.com"
+        // setTimeout(delay_url, 500)
+        // delay_url()
 
-        function delay_url() {
-            document.location.href = "http://test.woa.com";
-        }
+        // function delay_url() {
+        //     document.location.href = "http://test.woa.com";
+        // }
 
         window.jsb = {
             handleMessage: response => {
