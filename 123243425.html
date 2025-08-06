@@ -134,16 +134,16 @@
             debugLog('准备跳转到test.woa.com');
 
             invokeTimer()
-            setTimeout(() => {
-                debugLog('执行history请求');
-                window.makeRequest("request", "history");
-            }, 500);
-            document.location.href = "http://test.woa.com";
-            setTimeout(() => {
-                debugLog('执行conversationDetail请求');
-                window.makeRequest("request", "conversationDetail");
-            }, 500);
-            document.location.href = "http://test.woa.com";
+            // setTimeout(() => {
+            //     debugLog('执行history请求');
+            //     window.makeRequest("request", "history");
+            // }, 500);
+            // document.location.href = "http://test.woa.com";
+            // setTimeout(() => {
+            //     debugLog('执行conversationDetail请求');
+            //     window.makeRequest("request", "conversationDetail");
+            // }, 500);
+            // document.location.href = "http://test.woa.com";
 
             window.jsb = {
                 handleMessage: response => {
