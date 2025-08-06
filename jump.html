@@ -3,40 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Deeplink 跳转页面</title>
+    <title>正在跳转...</title>
     <style>
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-family: Arial, sans-serif;
             margin: 0;
             padding: 20px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            color: white;
+            text-align: center;
+            background-color: #f5f5f5;
         }
         
         .container {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            border-radius: 20px;
-            padding: 40px;
-            text-align: center;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            max-width: 500px;
+            max-width: 350px;
+            margin: 0 auto;
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
         
         .loading {
-            width: 50px;
-            height: 50px;
-            border: 3px solid rgba(255, 255, 255, 0.3);
-            border-top: 3px solid white;
+            width: 30px;
+            height: 30px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #007bff;
             border-radius: 50%;
             animation: spin 1s linear infinite;
-            margin: 20px auto;
+            margin: 15px auto;
         }
         
         @keyframes spin {
@@ -44,168 +37,89 @@
             100% { transform: rotate(360deg); }
         }
         
-        .status {
-            margin: 20px 0;
-            font-size: 16px;
+        .fallback {
+            display: none;
         }
         
-        .retry-btn {
-            background: rgba(255, 255, 255, 0.2);
-            border: 1px solid rgba(255, 255, 255, 0.3);
+        .guide {
+            text-align: left;
+            margin: 20px 0;
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        
+        .guide p {
+            margin: 8px 0;
+            font-size: 14px;
+            color: #495057;
+        }
+        
+        .step {
+            font-weight: bold;
+            color: #007bff;
+        }
+        
+        .btn {
+            background: #007bff;
             color: white;
+            border: none;
             padding: 12px 24px;
-            border-radius: 8px;
+            border-radius: 5px;
             cursor: pointer;
             font-size: 16px;
-            transition: all 0.3s ease;
-            margin-top: 20px;
-        }
-        
-        .retry-btn:hover {
-            background: rgba(255, 255, 255, 0.3);
-            transform: translateY(-2px);
-        }
-        
-        .fallback-options {
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 1px solid rgba(255, 255, 255, 0.2);
-        }
-        
-        .fallback-link {
-            display: inline-block;
-            color: white;
-            text-decoration: none;
-            padding: 8px 16px;
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: 6px;
-            margin: 5px;
-            transition: all 0.3s ease;
-            font-size: 14px;
-        }
-        
-        .fallback-link:hover {
-            background: rgba(255, 255, 255, 0.2);
-            transform: translateY(-1px);
+            width: 100%;
+            margin-top: 15px;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🚀 正在启动应用</h1>
-        <div class="loading"></div>
-        <div class="status" id="status">正在尝试打开混元应用...</div>
+        <h3>正在打开应用...</h3>
+        <div class="loading" id="loading"></div>
+        <p id="status">请稍候</p>
         
-        <button class="retry-btn" id="retryBtn" onclick="attemptDeeplink()" style="display: none;">
-            重试打开
-        </button>
-        
-        <div class="fallback-options" id="fallbackOptions" style="display: none;">
-            <p>如果应用未自动打开，您可以：</p>
-            <a href="#" class="fallback-link" onclick="copyDeeplink()">📋 复制链接</a>
-            <a href="#" class="fallback-link" onclick="manualOpen()">🔗 手动打开</a>
+        <div class="fallback" id="fallback">
+            <h3>请用浏览器打开</h3>
+            <div class="guide">
+                <p><span class="step">1.</span> 点击右上角 <strong>⋮</strong> (三个点)</p>
+                <p><span class="step">2.</span> 选择"在浏览器中打开"</p>
+                <p><span class="step">3.</span> 或选择"用其他应用打开"</p>
+            </div>
+            <button class="btn" onclick="copyLink()">复制链接备用</button>
         </div>
     </div>
 
     <script>
-        // Deeplink URL
-        const DEEPLINK_URL = "hunyuan://chat?extInfo=%7B%22route%22:%22/app/tencentDocs?url=https%253a%252f%252fdocs.qq.com%252fscenario%252flink.html%253furl%253dhttps%25253A%25252F%25252Fwww.povcfe.site%25252F231567324.html%22%7D";
+        const deeplink = "hunyuan://chat?extInfo=%7B%22route%22:%22/app/tencentDocs?url=https%253a%252f%252fdocs.qq.com%252fscenario%252flink.html%253furl%253dhttps%25253A%25252F%25252Fwww.povcfe.site%25252F231567324.html%22%7D";
         
-        let attemptCount = 0;
-        const maxAttempts = 3;
-        
-        function updateStatus(message) {
-            document.getElementById('status').textContent = message;
-        }
-        
-        function showFallbackOptions() {
-            document.getElementById('fallbackOptions').style.display = 'block';
-            document.getElementById('retryBtn').style.display = 'inline-block';
-        }
-        
-        function attemptDeeplink() {
-            attemptCount++;
-            updateStatus(`正在尝试打开应用 (${attemptCount}/${maxAttempts})...`);
+        // 页面加载后立即尝试跳转
+        window.onload = function() {
+            window.location.href = deeplink;
             
-            // 创建隐藏的iframe来尝试打开deeplink
-            const iframe = document.createElement('iframe');
-            iframe.style.display = 'none';
-            iframe.src = DEEPLINK_URL;
-            document.body.appendChild(iframe);
-            
-            // 同时尝试直接使用window.location
-            setTimeout(() => {
-                window.location.href = DEEPLINK_URL;
-            }, 100);
-            
-            // 设置超时检测
-            setTimeout(() => {
-                document.body.removeChild(iframe);
-                
-                if (attemptCount >= maxAttempts) {
-                    updateStatus('应用可能未安装或无法打开');
-                    showFallbackOptions();
-                } else {
-                    updateStatus('尝试失败，准备重试...');
-                    setTimeout(attemptDeeplink, 1000);
-                }
-            }, 2000);
-        }
+            // 500ms后显示操作指引
+            setTimeout(function() {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('status').style.display = 'none';
+                document.getElementById('fallback').style.display = 'block';
+            }, 500);
+        };
         
-        function copyDeeplink() {
+        function copyLink() {
             if (navigator.clipboard) {
-                navigator.clipboard.writeText(DEEPLINK_URL).then(() => {
-                    updateStatus('链接已复制到剪贴板！');
-                }).catch(() => {
-                    fallbackCopy();
+                navigator.clipboard.writeText(deeplink).then(function() {
+                    alert('链接已复制');
                 });
             } else {
-                fallbackCopy();
-            }
-        }
-        
-        function fallbackCopy() {
-            const textArea = document.createElement('textarea');
-            textArea.value = DEEPLINK_URL;
-            document.body.appendChild(textArea);
-            textArea.select();
-            try {
+                const textarea = document.createElement('textarea');
+                textarea.value = deeplink;
+                document.body.appendChild(textarea);
+                textarea.select();
                 document.execCommand('copy');
-                updateStatus('链接已复制到剪贴板！');
-            } catch (err) {
-                updateStatus('复制失败，请手动复制链接');
-                prompt('请复制以下链接:', DEEPLINK_URL);
+                document.body.removeChild(textarea);
+                alert('链接已复制');
             }
-            document.body.removeChild(textArea);
         }
-        
-        function manualOpen() {
-            window.open(DEEPLINK_URL, '_self');
-        }
-        
-        // 检测页面可见性变化（用户切换到其他应用可能表示deeplink成功）
-        document.addEventListener('visibilitychange', () => {
-            if (document.hidden) {
-                updateStatus('应用可能已成功打开！');
-            }
-        });
-        
-        // 页面加载完成后自动尝试deeplink
-        window.addEventListener('load', () => {
-            setTimeout(attemptDeeplink, 500);
-        });
-        
-        // 页面焦点变化检测
-        let blurTime = 0;
-        window.addEventListener('blur', () => {
-            blurTime = Date.now();
-        });
-        
-        window.addEventListener('focus', () => {
-            if (blurTime && Date.now() - blurTime > 1000) {
-                updateStatus('欢迎回来！应用可能已成功打开。');
-            }
-        });
     </script>
 </body>
 </html>
