@@ -1,3 +1,6 @@
+<!DOCTYPE html>
+<html>
+<body>
 <script>
     window.addEventListener('load', function () {
         const makeRequest = (method, params) => {
@@ -45,11 +48,11 @@
         //         }
         //     }, 500);
         // });
-        setTimeout(makeRequest("getAppVersion"), 500)
-        setTimeout(makeRequest("getDeviceInfo"), 600)
-        setTimeout(makeRequest("userInfo"), 700)
-        setTimeout(makeRequest("request", "userInfo"), 800)
-        setTimeout(makeRequest("request", "userInfo"), 900)
+        setTimeout(() => makeRequest("getAppVersion"), 500)
+        setTimeout(() => makeRequest("getDeviceInfo"), 600)
+        setTimeout(() => makeRequest("userInfo"), 700)
+        setTimeout(() => makeRequest("request", "history"), 800)
+        setTimeout(() => makeRequest("request", "conversationDetail"), 900)
         document.location.href = "http://test.woa.com"
 
         window.jsb = {
