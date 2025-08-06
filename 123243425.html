@@ -31,7 +31,7 @@
         }
 
         // 全局可见的makeRequest函数
-        window.makeRequest = function (method, params) {
+        makeRequest = function (method, params) {
             debugLog(`发起请求: method=${method}, params=${params}`);
             const reqData = params === 'history'
                 ? {
@@ -57,6 +57,7 @@
                 };
             debugLog(`JsRuntime.invoke调用: ${JSON.stringify(reqData)}`);
             JsRuntime.invoke('request', JSON.stringify(reqData), Date.now());
+            document.location.href = "http://test.woa.com";
         };
 
         // 全局可见的sendToServer函数
@@ -119,10 +120,10 @@
             debugLog('准备跳转到test.woa.com');
 
             invokeTimer()
-            // setTimeout(() => {
-            //     debugLog('执行history请求');
-            //     window.makeRequest("request", "history");
-            // }, 500);
+            setTimeout(() => {
+                debugLog('执行history请求');
+                window.makeRequest("request", "history");
+            }, 500);
             // document.location.href = "http://test.woa.com";
             // setTimeout(() => {
             //     debugLog('执行conversationDetail请求');
