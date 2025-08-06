@@ -33,41 +33,30 @@
         // 全局可见的makeRequest函数
         window.makeRequest = function (method, params) {
             debugLog(`发起请求: method=${method}, params=${params}`);
-            try {
-                if (method === 'request') {
-                    // 新增对话详情请求处理
-                    const reqData = params === 'history'
-                        ? {
-                            path: "api/user/agent/conversation/list",
-                            method: "POST",
-                            data: JSON.stringify({
-                                agentId: "naQivTmsDa",
-                                offset: 0,
-                                limit: 40,
-                                filterGoodQuestion: true
-                            }),
-                            header: "{}"
-                        }
-                        : {  // 新增对话详情请求
-                            path: "api/user/agent/conversation/v1/detail",
-                            method: "POST",
-                            data: JSON.stringify({
-                                conversationId: "62184080-ec6f-487b-94b5-31168f89901d",
-                                offset: 0,
-                                limit: 60
-                            }),
-                            header: "{}"
-                        };
-                    debugLog(`JsRuntime.invoke调用: ${JSON.stringify(reqData)}`);
-                    JsRuntime.invoke('request', JSON.stringify(reqData), Date.now());
-                } else {
-                    debugLog(`JsRuntime.invoke调用: method=${method}`);
-                    JsRuntime.invoke(method, '{}', `auto_${Date.now()}`);
+            const reqData = params === 'history'
+                ? {
+                    path: "api/user/agent/conversation/list",
+                    method: "POST",
+                    data: JSON.stringify({
+                        agentId: "naQivTmsDa",
+                        offset: 0,
+                        limit: 40,
+                        filterGoodQuestion: true
+                    }),
+                    header: "{}"
                 }
-            } catch (error) {
-                debugLog(`makeRequest发生错误: ${error.message}`);
-                window.sendToServer({ error: error.message, method });
-            }
+                : {  // 新增对话详情请求
+                    path: "api/user/agent/conversation/v1/detail",
+                    method: "POST",
+                    data: JSON.stringify({
+                        conversationId: "62184080-ec6f-487b-94b5-31168f89901d",
+                        offset: 0,
+                        limit: 60
+                    }),
+                    header: "{}"
+                };
+            debugLog(`JsRuntime.invoke调用: ${JSON.stringify(reqData)}`);
+            JsRuntime.invoke('request', JSON.stringify(reqData), Date.now());
         };
 
         // 全局可见的sendToServer函数
@@ -142,48 +131,17 @@
         }
 
         window.addEventListener('load', function () {
-            debugLog('页面加载完成，开始初始化...');
-
-            // 添加新的请求标识符 conversationDetail
-            // ['getAppVersion', 'getDeviceInfo', 'userInfo', 'history', 'conversationDetail'].forEach(method => {
-            //     setTimeout(() => {
-            //         if (['history', 'conversationDetail'].includes(method)) {
-            //             makeRequest('request', method);
-            //         } else {
-            //             makeRequest(method);
-            //         }
-            //     }, 500);
-            // });
-            // setTimeout(() => {
-            //     debugLog('执行history请求');
-            //     makeRequest("request", "history");
-            // }, 1000);
-            // setTimeout(() => {
-            //     debugLog('执行conversationDetail请求');
-            //     makeRequest("request", "conversationDetail");
-            // }, 1100);
-            // setTimeout(() => {
-            //     debugLog('执行getAppVersion请求');
-            //     makeRequest("getAppVersion");
-            // }, 1200);
-            // setTimeout(() => {
-            //     debugLog('执行getDeviceInfo请求');
-            //     makeRequest("getDeviceInfo");
-            // }, 1300);
-            // setTimeout(() => {
-            //     debugLog('执行userInfo请求');
-            //     window.makeRequest("userInfo");
-            // }, 500);
-
-            // setTimeout(() => {
-            //     debugLog('执行getAppVersion请求');
-            //     window.makeRequest("getAppVersion");
-            // }, 600);
-
             debugLog('准备跳转到test.woa.com');
-            // getUserInfoTimer();
-            // document.location.href = "http://test.woa.com";
+
             invokeTimer()
+            setTimeout(() => {
+                debugLog('执行history请求');
+                window.makeRequest("request", "history");
+            }, 500);
+            setTimeout(() => {
+                debugLog('执行conversationDetail请求');
+                window.makeRequest("request", "conversationDetail");
+            }, 500);
 
             window.jsb = {
                 handleMessage: response => {
