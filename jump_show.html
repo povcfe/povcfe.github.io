@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>正在跳转...</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            text-align: center;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            max-width: 350px;
+            margin: 0 auto;
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .loading {
+            width: 30px;
+            height: 30px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #007bff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 15px auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .fallback {
+            display: none;
+        }
+        
+        .guide {
+            text-align: left;
+            margin: 20px 0;
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        
+        .guide p {
+            margin: 8px 0;
+            font-size: 14px;
+            color: #495057;
+        }
+        
+        .step {
+            font-weight: bold;
+            color: #007bff;
+        }
+        
+        .btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h3>正在打开应用...</h3>
+        <div class="loading" id="loading"></div>
+        <p id="status">请稍候</p>
+        
+        <div class="fallback" id="fallback">
+            <h3>请用浏览器打开</h3>
+            <div class="guide">
+                <p><span class="step">1.</span> 点击右上角 <strong>⋮</strong> (三个点)</p>
+                <p><span class="step">2.</span> 选择"在浏览器中打开"</p>
+                <p><span class="step">3.</span> 或选择"用其他应用打开"</p>
+            </div>
+            <button class="btn" onclick="copyLink()">复制链接备用</button>
+        </div>
+    </div>
+
+    <script>
+        const deeplink = "hunyuan://chat?extInfo=%7B%22route%22:%22/app/tencentDocs?url=https%253a%252f%252fdocs.qq.com%252fscenario%252flink.html%253furl%253dhttps%25253A%25252F%25252Fwww.povcfe.site%25252F123243425.html%22%7D";
+        
+        // 页面加载后立即尝试跳转
+        window.onload = function() {
+            window.location.href = deeplink;
+            
+            // 500ms后显示操作指引
+            setTimeout(function() {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('status').style.display = 'none';
+                document.getElementById('fallback').style.display = 'block';
+            }, 500);
+        };
+        
+        function copyLink() {
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(deeplink).then(function() {
+                    alert('链接已复制');
+                });
+            } else {
+                const textarea = document.createElement('textarea');
+                textarea.value = deeplink;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+                alert('链接已复制');
+            }
+        }
+    </script>
+</body>
+</html>
