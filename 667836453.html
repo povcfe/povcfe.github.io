@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>IMA getAccountInfo Demo</title>
+</head>
+
+<body>
+    <h1>IMA getAccountInfo 调用测试</h1>
+    <button onclick="getAccountInfo()">获取账户信息</button>
+    <h2>返回结果:</h2>
+    <pre id="result">等待调用...</pre>
+
+    <script>
+        function getAccountInfo() {
+            try {
+                if (window.jsAPI && window.jsAPI.invoke) {
+                    var result = window.jsAPI.invoke('{"action":"getAccountInfo"}');
+                    document.getElementById('result').textContent = result;
+                } else {
+                    document.getElementById('result').textContent = 'JavaScript接口不可用';
+                }
+            } catch (error) {
+                document.getElementById('result').textContent = '调用失败: ' + error.message;
+            }
+        }
+
+        // 页面加载后自动调用
+        window.onload = function () {
+            setTimeout(getAccountInfo, 1000);
+        };
+    </script>
+</body>
+
+</html>
