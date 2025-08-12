@@ -2,11 +2,11 @@
 <html>
 
 <head>
-    <title>IMA getAccountInfo Demo</title>
+    <title>getAccountInfo Demo</title>
 </head>
 
 <body>
-    <h1>IMA getAccountInfo 调用测试</h1>
+    <h1>getAccountInfo 调用测试</h1>
     <button onclick="getAccountInfo()">获取账户信息</button>
     <h2>返回结果:</h2>
     <pre id="result">等待调用...</pre>
@@ -14,8 +14,8 @@
     <script>
         function getAccountInfo() {
             try {
-                if (window.jsAPI && window.jsAPI.invoke) {
-                    var result = window.jsAPI.invoke('{"action":"getAccountInfo"}');
+                if (imaJsBridge && imaJsBridge.invoke) {
+                    var result = imaJsBridge.invoke('{"action":"getAccountInfo"}');
                     document.getElementById('result').textContent = result;
                 } else {
                     document.getElementById('result').textContent = 'JavaScript接口不可用';
