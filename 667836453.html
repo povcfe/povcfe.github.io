@@ -2,23 +2,40 @@
 <html>
 
 <head>
-    <title>getAccountInfo Demo</title>
+    <title>IMA getAccountInfo Demo</title>
 </head>
 
 <body>
-    <h1>getAccountInfo 调用测试</h1>
+    <h1>IMA getAccountInfo 调用测试</h1>
+    <p>⚠️ 注意：此接口仅在 .qq.com 域名下可用</p>
     <button onclick="getAccountInfo()">获取账户信息</button>
     <h2>返回结果:</h2>
     <pre id="result">等待调用...</pre>
 
     <script>
+        // 创建imaFrame对象来接收回调
+        window.imaFrame = {
+            callbackFromNative: function (callbackId, result) {
+                console.log('收到回调:', callbackId, result);
+                document.getElementById('result').textContent = JSON.stringify(result, null, 2);
+            }
+        };
+
         function getAccountInfo() {
             try {
-                if (imaJsBridge && imaJsBridge.invoke) {
-                    var result = imaJsBridge.invoke('{"action":"getAccountInfo"}');
-                    document.getElementById('result').textContent = result;
+                if (window.imaJsBridge && window.imaJsBridge.invokeWithCallback) {
+                    // 使用invokeWithCallback而不是invoke
+                    var callbackId = 'callback_' + Date.now();
+                    var requestData = JSON.stringify({
+                        action: "getAccountInfo",
+                        callbackId: callbackId,
+                        args: "{}"
+                    });
+
+                    document.getElementById('result').textContent = '正在调用...';
+                    window.imaJsBridge.invokeWithCallback(requestData);
                 } else {
-                    document.getElementById('result').textContent = 'imaJsBridge接口不可用 - 仅限 .qq.com 域名';
+                    document.getElementById('result').textContent = 'imaJsBridge接口不可用';
                 }
             } catch (error) {
                 document.getElementById('result').textContent = '调用失败: ' + error.message;
