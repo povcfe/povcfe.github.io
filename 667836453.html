@@ -1,27 +1,30 @@
-  <!DOCTYPE html>
-  <html>
-  <head>
-      <title>getAccountInfo Demo</title>
-  </head>
-  <body>
-      <h1>getAccountInfo 调用测试</h1>
-      <button onclick="getAccountInfo()">获取账户信息</button>
-      <h2>返回结果:</h2>
-      <pre id="result">等待调用...</pre>
+<!DOCTYPE html>
+<html>
 
-      <script>
-      function getAccountInfo() {
-          try {
-              if (window.imaJsBridge && window.imaJsBridge.invoke) {
-                  var result = window.imaJsBridge.invoke('{"action":"getAccountInfo"}');
-                  document.getElementById('result').textContent = result;
-              } else {
-                  document.getElementById('result').textContent = 'imaJsBridge接口不可用 - 仅限 .qq.com 域名';
-              }
-          } catch (error) {
-              document.getElementById('result').textContent = '调用失败: ' + error.message;
-          }
-      }
-      </script>
-  </body>
-  </html>
+<head>
+    <title>getAccountInfo Demo</title>
+</head>
+
+<body>
+    <h1>getAccountInfo 调用测试</h1>
+    <button onclick="getAccountInfo()">获取账户信息</button>
+    <h2>返回结果:</h2>
+    <pre id="result">等待调用...</pre>
+
+    <script>
+        function getAccountInfo() {
+            try {
+                if (imaJsBridge && imaJsBridge.invoke) {
+                    var result = imaJsBridge.invoke('{"action":"getAccountInfo"}');
+                    document.getElementById('result').textContent = result;
+                } else {
+                    document.getElementById('result').textContent = 'imaJsBridge接口不可用 - 仅限 .qq.com 域名';
+                }
+            } catch (error) {
+                document.getElementById('result').textContent = '调用失败: ' + error.message;
+            }
+        }
+    </script>
+</body>
+
+</html>
