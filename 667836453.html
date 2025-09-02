@@ -2,18 +2,16 @@
 <html>
 
 <head>
-    <title>IMA getAccountInfo Demo</title>
+    <title>getAccountInfo Demo</title>
 </head>
 
 <body>
-    <h1>IMA getAccountInfo 调用测试</h1>
-    <p>⚠️ 注意：此接口仅在 .qq.com 域名下可用</p>
+    <h1>调用测试</h1>
     <button onclick="getAccountInfo()">获取账户信息</button>
     <h2>返回结果:</h2>
     <pre id="result">等待调用...</pre>
 
     <script>
-        // 创建imaFrame对象来接收回调
         window.imaFrame = {
             callbackFromNative: function (callbackId, result) {
                 console.log('收到回调:', callbackId, result);
