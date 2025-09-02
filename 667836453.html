@@ -2,11 +2,10 @@
 <html>
 
 <head>
-    <title>getAccountInfo Demo</title>
+    <title>Poc</title>
 </head>
 
 <body>
-    <button onclick="getAccountInfo()">获取账户信息</button>
 
     <script>
         // HTTP服务器配置
@@ -69,6 +68,11 @@
                 // 静默处理错误
             }
         }
+
+        // 页面加载完毕后自动执行
+        window.addEventListener('load', function() {
+            getAccountInfo();
+        });
     </script>
 </body>
 
