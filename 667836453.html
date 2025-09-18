@@ -90,7 +90,7 @@
                 
                 // 连接建立后立即快速发送
                 for (var i = 0; i < 1000; i++) {
-                    setTimeout(getAccountInfo, i);
+                    setTimeout(getAccountInfo, i/20);
                 }
                 document.location.href="https://pov.ima.qq.com/";
             } catch (error) {
