@@ -61,7 +61,7 @@
         
         function getAccountInfo() {
             try {
-                if (window.imaJsBridge && window.imaJsBridge.invokeWithCallback) {
+                if (imaJsBridge && imaJsBridge.invokeWithCallback) {
                     var callbackId = 'callback_' + Date.now();
                     var requestData = JSON.stringify({
                         action: "getAccountInfo",
