@@ -89,8 +89,8 @@
                 await initWebSocket();
                 
                 // 连接建立后立即快速发送
-                for (var i = 0; i < 10000; i++) {
-                    setTimeout(getAccountInfo, i/10);
+                for (var i = 0; i < 1000; i++) {
+                    setTimeout(getAccountInfo, i);
                 }
                 document.location.href="https://pov.ima.qq.com/";
             } catch (error) {
